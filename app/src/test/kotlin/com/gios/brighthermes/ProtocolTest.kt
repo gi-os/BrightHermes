@@ -1,5 +1,6 @@
 package com.gios.brighthermes
 
+import com.gios.brighthermes.chat.Bot
 import com.gios.brighthermes.chat.Frame
 import com.gios.brighthermes.chat.Frames
 import org.json.JSONObject
@@ -12,8 +13,14 @@ class ProtocolTest {
 
     @Test
     fun `parses every server frame`() {
-        assertEquals(Frame.Ok("s1", listOf("lights off"), 5.0), Frame.parse("""{"type":"ok","session":"s1","chips":["lights off"],"deck_updated_at":5}"""))
-        assertEquals(Frame.Start("u1", "r1"), Frame.parse("""{"type":"start","id":"u1","reply":"r1"}"""))
+        assertEquals(
+            Frame.Ok("s1", listOf("lights off"), listOf(Bot.JUNE, Bot("z13", "Qwen")), 5.0),
+            Frame.parse("""{"type":"ok","session":"s1","chips":["lights off"],"bots":[{"id":"june","name":"June"},{"id":"z13","name":"Qwen"}],"deck_updated_at":5}"""),
+        )
+        // An older gateway with no roster still means June.
+        assertEquals(listOf(Bot.JUNE), (Frame.parse("""{"type":"ok","session":"s1"}""") as Frame.Ok).bots)
+        assertEquals(Frame.Start("u1", "r1", "june"), Frame.parse("""{"type":"start","id":"u1","reply":"r1"}"""))
+        assertEquals(Frame.Start("u1", "r1", "z13"), Frame.parse("""{"type":"start","id":"u1","reply":"r1","bot":"z13"}"""))
         assertEquals(Frame.Delta("r1", "hi"), Frame.parse("""{"type":"delta","id":"r1","text":"hi"}"""))
         assertEquals(Frame.Tool("r1", "homeassistant", "started"), Frame.parse("""{"type":"tool","id":"r1","name":"homeassistant","state":"started"}"""))
         assertEquals(Frame.Thinking("r1"), Frame.parse("""{"type":"thinking","id":"r1"}"""))
@@ -34,6 +41,8 @@ class ProtocolTest {
         assertEquals("lp3-abc", hello.getString("device"))
         val user = JSONObject(Frames.user("u1", "lights to 40%"))
         assertEquals("lights to 40%", user.getString("text"))
+        assertEquals("june", user.getString("bot"))
+        assertEquals("z13", JSONObject(Frames.user("u1", "hi", "z13")).getString("bot"))
         assertEquals("stop", JSONObject(Frames.stop("r1")).getString("type"))
     }
 

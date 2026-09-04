@@ -10,11 +10,11 @@ import org.json.JSONObject
  * of that contract and the two are kept in step by hand.
  */
 sealed class Frame {
-    /** The handshake answer. `session` is June's session id for this phone. */
-    data class Ok(val session: String, val chips: List<String>, val deckUpdatedAt: Double) : Frame()
+    /** The handshake answer. `session` is June's session id for this phone; `bots` is who can be talked to. */
+    data class Ok(val session: String, val chips: List<String>, val bots: List<Bot>, val deckUpdatedAt: Double) : Frame()
 
-    /** June started answering user message [id]; her reply will be [reply]. */
-    data class Start(val id: String, val reply: String) : Frame()
+    /** Someone started answering user message [id]; the reply will be [reply], from [bot]. */
+    data class Start(val id: String, val reply: String, val bot: String) : Frame()
 
     data class Delta(val id: String, val text: String) : Frame()
 
@@ -44,9 +44,16 @@ sealed class Frame {
                 "ok" -> Ok(
                     o.optString("session"),
                     o.optJSONArray("chips")?.let { a -> (0 until a.length()).map { a.optString(it) }.filter { it.isNotBlank() } } ?: emptyList(),
+                    o.optJSONArray("bots")?.let { a ->
+                        (0 until a.length()).mapNotNull { i ->
+                            val b = a.optJSONObject(i) ?: return@mapNotNull null
+                            val bid = b.optString("id").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                            Bot(bid, b.optString("name", bid))
+                        }
+                    } ?: listOf(Bot.JUNE),
                     o.optDouble("deck_updated_at", 0.0),
                 )
-                "start" -> Start(id ?: return null, o.optString("reply"))
+                "start" -> Start(id ?: return null, o.optString("reply"), o.optString("bot", Bot.JUNE.id))
                 "delta" -> Delta(id ?: return null, o.optString("text"))
                 "tool" -> Tool(id ?: return null, o.optString("name"), o.optString("state"))
                 "thinking" -> Thinking(id ?: return null)
@@ -62,12 +69,23 @@ sealed class Frame {
 
 object Frames {
     fun hello(device: String): String = JSONObject().put("type", "hello").put("v", 1).put("device", device).toString()
-    fun user(id: String, text: String): String = JSONObject().put("type", "user").put("id", id).put("text", text).toString()
+    fun user(id: String, text: String, bot: String = Bot.JUNE.id): String =
+        JSONObject().put("type", "user").put("id", id).put("text", text).put("bot", bot).toString()
     fun stop(id: String): String = JSONObject().put("type", "stop").put("id", id).toString()
     const val PING = """{"type":"ping"}"""
 }
 
-/** One turn in the transcript. `who` is user or june; `pending` while June is still typing. */
+/**
+ * Someone to talk to. June is the agent behind the gateway; any other bot is an OpenAI-compatible
+ * endpoint the gateway was configured with (`BOTS`). Same frames either way; the phone only picks.
+ */
+data class Bot(val id: String, val name: String) {
+    companion object {
+        val JUNE = Bot("june", "June")
+    }
+}
+
+/** One turn in the transcript. `who` is user or june; `pending` while the bot is still typing. */
 data class Message(
     val id: String,
     val who: Who,
@@ -80,6 +98,8 @@ data class Message(
     val thinking: Boolean = false,
     /** True for a message June sent on her own (a cron job, a watcher) rather than in reply. */
     val unprompted: Boolean = false,
+    /** Which bot this belongs to. The transcript shows one bot at a time. */
+    val bot: String = Bot.JUNE.id,
 ) {
     enum class Who { USER, JUNE }
 }

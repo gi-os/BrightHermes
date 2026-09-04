@@ -72,7 +72,7 @@ class Socket(
     /** True if the frame went out. False means "not connected", and the caller should say so. */
     fun send(text: String): Boolean = ws?.send(text) == true
 
-    fun ask(id: String, text: String): Boolean = send(Frames.user(id, text))
+    fun ask(id: String, text: String, bot: String): Boolean = send(Frames.user(id, text, bot))
 
     fun stop(id: String) {
         send(Frames.stop(id))

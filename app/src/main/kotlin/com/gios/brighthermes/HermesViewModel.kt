@@ -3,6 +3,7 @@ package com.gios.brighthermes
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.gios.brighthermes.chat.Bot
 import com.gios.brighthermes.chat.Frame
 import com.gios.brighthermes.chat.Message
 import com.gios.brighthermes.deck.Deck
@@ -50,8 +51,28 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
     val messages: StateFlow<List<Message>> = _messages.asStateFlow()
 
+    private fun show() {
+        _messages.value = _all.value.filter { it.bot == _bot.value.id }
+    }
+
+    private fun updateAll(f: (List<Message>) -> List<Message>) {
+        _all.update(f)
+        show()
+    }
+
     private val _chips = MutableStateFlow(_deck.value.chips)
     val chips: StateFlow<List<String>> = _chips.asStateFlow()
+
+    /** Who can be talked to, June first. Comes with the socket's `ok`; until then, June. */
+    private val _bots = MutableStateFlow(listOf(Bot.JUNE))
+    val bots: StateFlow<List<Bot>> = _bots.asStateFlow()
+
+    /** Who the input goes to. The transcript on screen is this bot's. */
+    private val _bot = MutableStateFlow(Bot.JUNE)
+    val bot: StateFlow<Bot> = _bot.asStateFlow()
+
+    /** Everything fetched or said so far, every bot; [messages] is the current bot's slice. */
+    private val _all = MutableStateFlow<List<Message>>(emptyList())
 
     /** strip / grid / line — see ui/DeckViews. */
     private val _deckMode = MutableStateFlow(prefs.deckMode)
@@ -67,8 +88,11 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
     private val _configured = MutableStateFlow(prefs.configured)
     val configured: StateFlow<Boolean> = _configured.asStateFlow()
 
-    /** The reply id June is currently typing, so Stop knows what to stop. */
+    /** The reply id currently being typed, so Stop knows what to stop. */
     private var inFlight: String? = null
+
+    /** Which bot each outgoing user message went to, so the reply lands in the right slice. */
+    private val pendingBot = mutableMapOf<String, String>()
     private var noticeJob: Job? = null
     private var clockJob: Job? = null
 
@@ -159,25 +183,43 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
 
     // -- chat ------------------------------------------------------------------------------------
 
-    private fun loadThread() {
+    private fun loadThread(bot: Bot = _bot.value) {
         viewModelScope.launch {
             try {
-                val history = api.thread(60)
-                // Keep anything in flight at the bottom; history replaces the rest.
-                val live = _messages.value.filter { it.pending || it.at > (history.lastOrNull()?.at ?: 0L) }
-                _messages.value = history + live.filter { l -> history.none { it.text == l.text && it.who == l.who } }
+                val history = api.thread(bot.id, 60)
+                // Keep anything in flight at the bottom; history replaces the rest of this bot's slice.
+                val live = _all.value.filter { it.bot == bot.id && (it.pending || it.at > (history.lastOrNull()?.at ?: 0L)) }
+                val merged = history + live.filter { l -> history.none { it.text == l.text && it.who == l.who } }
+                updateAll { all -> all.filter { it.bot != bot.id } + merged }
             } catch (e: IOException) {
                 // The socket will still work; the screen just starts empty.
             }
         }
     }
 
+    /** Talk to someone else. The transcript swaps to theirs, fetched if not seen yet. */
+    fun pickBot(b: Bot) {
+        if (b.id == _bot.value.id) return
+        _bot.value = b
+        show()
+        if (_all.value.none { it.bot == b.id }) loadThread(b)
+    }
+
+    fun nextBot() {
+        val list = _bots.value
+        if (list.size < 2) return
+        val i = list.indexOfFirst { it.id == _bot.value.id }
+        pickBot(list[(i + 1) % list.size])
+    }
+
     fun send(text: String) {
         val t = text.trim()
         if (t.isEmpty()) return
         val id = "u" + UUID.randomUUID().toString().take(8)
-        _messages.update { it + Message(id, Message.Who.USER, t, System.currentTimeMillis()) }
-        if (!socket.ask(id, t)) {
+        val to = _bot.value
+        updateAll { it + Message(id, Message.Who.USER, t, System.currentTimeMillis(), bot = to.id) }
+        pendingBot[id] = to.id
+        if (!socket.ask(id, t, to.id)) {
             notice("Not connected — reconnecting")
             socket.open()
             // The frame is gone; retry once when the socket comes up.
@@ -185,12 +227,12 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
                 repeat(20) {
                     delay(500)
                     if (socket.state.value == Socket.State.ON) {
-                        socket.ask(id, t)
+                        socket.ask(id, t, to.id)
                         return@launch
                     }
                 }
-                _messages.update { it.filterNot { m -> m.id == id } }
-                notice("Couldn't reach June")
+                updateAll { it.filterNot { m -> m.id == id } }
+                notice("Couldn't reach ${to.name}")
             }
         }
     }
@@ -203,24 +245,30 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
         when (f) {
             is Frame.Ok -> {
                 if (f.chips.isNotEmpty()) _chips.value = f.chips
+                if (f.bots.isNotEmpty()) {
+                    _bots.value = f.bots
+                    // A bot that disappeared from the roster while selected falls back to June.
+                    if (f.bots.none { it.id == _bot.value.id }) pickBot(f.bots.first())
+                }
                 if (f.deckUpdatedAt > _deck.value.updatedAt) refresh()
             }
             is Frame.Start -> {
                 inFlight = f.reply
-                _messages.update { it + Message(f.reply, Message.Who.JUNE, "", System.currentTimeMillis(), pending = true) }
+                val to = pendingBot.remove(f.id) ?: f.bot
+                updateAll { it + Message(f.reply, Message.Who.JUNE, "", System.currentTimeMillis(), pending = true, bot = to) }
             }
-            is Frame.Delta -> _messages.update { list ->
+            is Frame.Delta -> updateAll { list ->
                 list.map { if (it.id == f.id) it.copy(text = it.text + f.text, thinking = false, tool = null) else it }
             }
-            is Frame.Tool -> _messages.update { list ->
+            is Frame.Tool -> updateAll { list ->
                 list.map { if (it.id == f.id) it.copy(tool = if (f.state == "started") f.name else null) else it }
             }
-            is Frame.Thinking -> _messages.update { list ->
+            is Frame.Thinking -> updateAll { list ->
                 list.map { if (it.id == f.id && it.text.isEmpty()) it.copy(thinking = true) else it }
             }
             is Frame.Done -> {
                 if (inFlight == f.id) inFlight = null
-                _messages.update { list ->
+                updateAll { list ->
                     list.mapNotNull {
                         if (it.id != f.id) it
                         else {
@@ -234,7 +282,7 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
             is Frame.Error -> {
                 if (f.id != null) {
                     if (inFlight == f.id) inFlight = null
-                    _messages.update { list -> list.filterNot { it.id == f.id && it.text.isBlank() }.map { if (it.id == f.id) it.copy(pending = false, tool = null) else it } }
+                    updateAll { list -> list.filterNot { it.id == f.id && it.text.isBlank() }.map { if (it.id == f.id) it.copy(pending = false, tool = null) else it } }
                 }
                 notice(f.message)
             }
@@ -284,6 +332,7 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
         prefs.token = ""
         prefs.cachedDeck = null
         _configured.value = false
+        _all.value = emptyList()
         _messages.value = emptyList()
         _deck.value = Deck.EMPTY
     }

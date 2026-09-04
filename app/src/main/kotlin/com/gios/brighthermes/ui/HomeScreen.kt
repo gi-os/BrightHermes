@@ -65,6 +65,8 @@ fun HomeScreen(vm: HermesViewModel, type: Type) {
     val mode by vm.deckMode.collectAsStateWithLifecycle()
     val notice by vm.notice.collectAsStateWithLifecycle()
     val voice by Listener.state.collectAsStateWithLifecycle()
+    val bots by vm.bots.collectAsStateWithLifecycle()
+    val bot by vm.bot.collectAsStateWithLifecycle()
 
     // Staleness is judged against a clock that ticks once a minute, not against every recomposition.
     val now by produceState(System.currentTimeMillis() / 1000.0) {
@@ -96,6 +98,9 @@ fun HomeScreen(vm: HermesViewModel, type: Type) {
             type = type,
             busy = messages.any { it.pending },
             notice = notice,
+            botName = bot.name,
+            canSwitch = bots.size > 1,
+            onSwitch = vm::nextBot,
             onSend = vm::send,
             onStop = vm::stop,
             onHoldStart = { vm.pttDown() },
@@ -233,14 +238,18 @@ private fun Chips(chips: List<String>, type: Type, onPick: (String) -> Unit) {
 }
 
 /**
- * The input. LightTextField style: 3dp underline, 80% width, no box. Return sends. While June is
- * typing the row reads Stop instead. Press and hold anywhere on the row to talk.
+ * The input. LightTextField style: 3dp underline, 80% width, no box. Return sends. While a reply
+ * is being typed the row reads Stop instead. With more than one bot configured, the name of the
+ * one listening sits at the right of the row; tap it to talk to the next.
  */
 @Composable
 private fun Composer(
     type: Type,
     busy: Boolean,
     notice: String?,
+    botName: String,
+    canSwitch: Boolean,
+    onSwitch: () -> Unit,
     onSend: (String) -> Unit,
     onStop: () -> Unit,
     onHoldStart: () -> Unit,
@@ -277,8 +286,14 @@ private fun Composer(
                 Box(Modifier.fillMaxWidth().height(3.dp).background(Ink.Content))
             }
             Spacer(Modifier.weight(1f))
-            if (busy) {
-                Text("Stop", style = type.small, color = Ink.Content, modifier = Modifier.clickable(onClick = onStop).padding(bottom = 6.dp))
+            when {
+                busy -> Text("Stop", style = type.small, color = Ink.Content, modifier = Modifier.clickable(onClick = onStop).padding(bottom = 6.dp))
+                canSwitch -> Text(
+                    botName.uppercase(),
+                    style = type.label,
+                    color = Ink.Secondary,
+                    modifier = Modifier.clickable(onClick = onSwitch).padding(bottom = 8.dp),
+                )
             }
         }
         Spacer(Modifier.height(6.dp))
@@ -286,7 +301,7 @@ private fun Composer(
         // than a tap starts listening; letting go sends. The camera button is the real control,
         // this is for the hand that is holding a coffee.
         Text(
-            notice ?: "Hold here, or the camera button, to talk",
+            notice ?: "Hold here, or the camera button, to talk to $botName",
             style = type.label,
             color = Ink.Secondary,
             modifier = Modifier

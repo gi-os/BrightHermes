@@ -65,8 +65,8 @@ class Api(
         call(req("/deck/layout").put(layoutJson(layout).toRequestBody(json)))
     }
 
-    suspend fun thread(limit: Int = 60): List<Message> {
-        val arr = JSONObject(call(req("/thread?limit=$limit"))).optJSONArray("messages") ?: JSONArray()
+    suspend fun thread(bot: String, limit: Int = 60): List<Message> {
+        val arr = JSONObject(call(req("/thread?limit=$limit&bot=$bot"))).optJSONArray("messages") ?: JSONArray()
         return (0 until arr.length()).mapNotNull { i ->
             val m = arr.optJSONObject(i) ?: return@mapNotNull null
             val who = when (m.optString("role")) {
@@ -75,7 +75,7 @@ class Api(
                 else -> return@mapNotNull null
             }
             val ts = m.optDouble("ts", 0.0)
-            Message(id = "h$i", who = who, text = m.optString("content"), at = if (ts > 0) (ts * 1000).toLong() else 0L)
+            Message(id = "h$bot$i", who = who, text = m.optString("content"), at = if (ts > 0) (ts * 1000).toLong() else 0L, bot = bot)
         }
     }
 
