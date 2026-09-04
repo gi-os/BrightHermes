@@ -1,0 +1,13 @@
+.gradle/
+build/
+local.properties
+.idea/
+.DS_Store
+*.iml
+.kotlin/
+# The speech model is fetched by Gradle at build time (see app/build.gradle.kts).
+app/src/main/assets/parakeet-110m-en/
+# Release signing — never commit. The keystore is a CI secret (KEYSTORE_B64).
+keystore/
+keystore.properties
+*.jks

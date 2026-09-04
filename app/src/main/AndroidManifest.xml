@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Push-to-talk. Asked for on the first hold of the camera button, never at launch.
+         Audio is transcribed on the phone; only the text leaves it. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+    <application
+        android:name=".App"
+        android:label="@string/app_name"
+        android:icon="@drawable/ic_launcher"
+        android:allowBackup="false"
+        android:theme="@style/Theme.BrightHermes">
+
+        <!-- Monochrome, always. BrightControl reads this and never lifts the grey for us. -->
+        <meta-data android:name="com.gios.brightcontrol.color" android:value="mono" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|keyboardHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- brighthermes://chat, brighthermes://tile/<id> — what a tile's `action` opens. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="brighthermes" />
+            </intent-filter>
+        </activity>
+
+        <!-- The deck at rest, for BrightControl's lock face. Read-only, exported, no permission:
+             the same pattern as com.gios.lightfog.stays. See deck/DeckProvider. -->
+        <provider
+            android:name=".deck.DeckProvider"
+            android:authorities="com.gios.brighthermes.deck"
+            android:exported="true"
+            android:grantUriPermissions="false" />
+    </application>
+</manifest>

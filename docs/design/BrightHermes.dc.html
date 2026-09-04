@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>
+  body { margin:0; background:#F2F2F0; font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#000; } a:hover { color:#666; }
+</style>
+</helmet>
+
+<section style="padding:56px 56px 90px; display:flex; flex-direction:column; gap:44px">
+
+  <div style="display:flex; flex-direction:column; gap:10px; max-width:760px">
+    <div style="font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:#888">Turn 1 · BrightHermes for Light Phone III</div>
+    <div style="font-size:30px; line-height:1.15; letter-spacing:-0.02em">Two directions for the main screen</div>
+    <div style="font-size:14px; line-height:1.6; color:#555; text-wrap:pretty">Every screen is drawn at true device scale — 411 × 472 dp (1080 × 1240 px @ 3.92"). Palette is #FFF content and #BBB secondary on #000, nothing else. No shadows, no fills, no radii, no color. Type stands in as Helvetica; ship on Akkurat. Grid is 15 dp = 1 LightGrid unit, so every gutter, tile height and margin below is a whole multiple of 15.</div>
+  </div>
+
+  <div style="display:flex; flex-wrap:wrap; gap:56px; align-items:flex-start">
+
+    <div id="1a" style="display:flex; flex-direction:column; gap:20px">
+      <div style="display:flex; align-items:baseline; gap:14px">
+        <div style="font-size:11px; font-weight:600; letter-spacing:0.1em; border:1px solid #000; padding:3px 8px">1A</div>
+        <div style="font-size:20px; letter-spacing:-0.01em">Ledger</div>
+        <div style="font-size:13px; color:#666">Named senders, everything flush left, deck reads as a labeled row.</div>
+      </div>
+
+      <div style="display:flex; gap:28px; flex-wrap:wrap">
+
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#888">Main — compact strip</div>
+          <div style="width:411px; height:472px; background:#000; color:#fff; box-shadow:0 0 0 1px #2a2a2a; display:flex; flex-direction:column; overflow:hidden">
+            <div style="padding:15px; display:flex; gap:15px">
+              <div style="flex:1; display:flex; flex-direction:column; gap:3px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">Weather</div>
+                <div style="font-size:24px; line-height:1; letter-spacing:-0.02em">63°</div>
+              </div>
+              <div style="flex:1.3; display:flex; flex-direction:column; gap:3px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">Next</div>
+                <div style="font-size:24px; line-height:1; letter-spacing:-0.02em">7:30p</div>
+              </div>
+              <div style="flex:1.1; display:flex; flex-direction:column; gap:3px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">June</div>
+                <div style="font-size:24px; line-height:1; letter-spacing:-0.02em">3 · 1</div>
+              </div>
+            </div>
+            <div style="height:1px; background:#fff"></div>
+
+            <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; gap:15px; padding:15px; overflow:hidden">
+              <div style="font-size:9px; letter-spacing:0.08em; color:#BBBBBB">08:12</div>
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">June</div>
+                <div style="font-size:15px; line-height:1.4; text-wrap:pretty">Three things done overnight. Backup finished, invoice sent. The garage sensor is offline again.</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">You</div>
+                <div style="font-size:15px; line-height:1.4; font-weight:600">Kitchen to 100%</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">June</div>
+                <div style="font-size:15px; line-height:1.4">Done. Living room still at 40%.</div>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:18px; padding:0 15px 12px; font-size:11px">
+              <span style="border-bottom:1px solid #fff; padding-bottom:2px">summarize my day</span>
+              <span style="border-bottom:1px solid #fff; padding-bottom:2px">lights off</span>
+              <span style="border-bottom:1px solid #fff; padding-bottom:2px">snooze 10m</span>
+            </div>
+            <div style="padding:0 15px 15px">
+              <div style="width:80%; border-bottom:3px solid #fff; padding-bottom:6px; font-size:15px; color:#BBBBBB">Message June</div>
+              <div style="font-size:9px; letter-spacing:0.08em; color:#BBBBBB; padding-top:6px">Hold camera button to talk</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#888">Deck expanded — 2 × 3</div>
+          <div style="width:411px; height:472px; background:#000; color:#fff; box-shadow:0 0 0 1px #2a2a2a; display:flex; flex-direction:column; overflow:hidden">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; padding:15px 15px 12px">
+              <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase">Deck</div>
+              <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB; border-bottom:1px solid #BBBBBB; padding-bottom:2px">Edit</div>
+            </div>
+            <div style="height:1px; background:#fff"></div>
+            <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:1fr">
+              <div style="border-right:1px solid #BBBBBB; border-bottom:1px solid #BBBBBB; padding:15px; display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">Clock</div>
+                <div style="font-size:30px; line-height:1; letter-spacing:-0.02em">12:34</div>
+                <div style="font-size:11px; color:#BBBBBB">Mon 4</div>
+              </div>
+              <div style="border-bottom:1px solid #BBBBBB; padding:15px; display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">Weather</div>
+                <div style="font-size:30px; line-height:1; letter-spacing:-0.02em">63°</div>
+                <div style="font-size:11px; color:#BBBBBB">Rain 7pm</div>
+              </div>
+              <div style="border-right:1px solid #BBBBBB; border-bottom:1px solid #BBBBBB; padding:15px; display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">Next</div>
+                <div style="font-size:30px; line-height:1; letter-spacing:-0.02em">7:30p</div>
+                <div style="font-size:11px; color:#BBBBBB">Dinner, Keens</div>
+              </div>
+              <div style="border-bottom:1px solid #BBBBBB; padding:15px; display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">Transit</div>
+                <div style="font-size:30px; line-height:1; letter-spacing:-0.02em">6 min</div>
+                <div style="font-size:11px; color:#BBBBBB">F uptown</div>
+              </div>
+              <div style="border-right:1px solid #BBBBBB; padding:15px; display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">June</div>
+                <div style="font-size:30px; line-height:1; letter-spacing:-0.02em">3 done</div>
+                <div style="font-size:11px; color:#BBBBBB">1 waiting on you</div>
+              </div>
+              <div style="padding:15px; display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">Home</div>
+                <div style="font-size:30px; line-height:1; letter-spacing:-0.02em">40%</div>
+                <div style="font-size:11px; color:#BBBBBB">Living room</div>
+              </div>
+            </div>
+            <div style="height:1px; background:#fff"></div>
+            <div style="padding:12px 15px; font-size:11px; color:#BBBBBB">Wheel click to collapse</div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#888">Deck collapsed</div>
+          <div style="width:411px; height:472px; background:#000; color:#fff; box-shadow:0 0 0 1px #2a2a2a; display:flex; flex-direction:column; overflow:hidden">
+            <div style="padding:15px 15px 12px; font-size:12px; letter-spacing:0.02em; display:flex; gap:8px">
+              <span>63°</span><span style="color:#BBBBBB">·</span><span>7:30p dinner</span><span style="color:#BBBBBB">·</span><span>2 pending</span>
+            </div>
+            <div style="height:1px; background:#fff"></div>
+            <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; gap:15px; padding:15px; overflow:hidden">
+              <div style="font-size:9px; letter-spacing:0.08em; color:#BBBBBB">Yesterday</div>
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">You</div>
+                <div style="font-size:15px; line-height:1.4; font-weight:600">Wake me if the garage sensor drops again</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">June</div>
+                <div style="font-size:15px; line-height:1.4">Watching it. I'll push only if it stays down past five minutes.</div>
+              </div>
+              <div style="font-size:9px; letter-spacing:0.08em; color:#BBBBBB">08:12</div>
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">June</div>
+                <div style="font-size:15px; line-height:1.4; text-wrap:pretty">Three things done overnight. Backup finished, invoice sent. The garage sensor is offline again.</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">You</div>
+                <div style="font-size:15px; line-height:1.4; font-weight:600">Kitchen to 100%</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">June</div>
+                <div style="font-size:15px; line-height:1.4">Done. Living room still at 40%.</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:18px; padding:0 15px 12px; font-size:11px">
+              <span style="border-bottom:1px solid #fff; padding-bottom:2px">summarize my day</span>
+              <span style="border-bottom:1px solid #fff; padding-bottom:2px">lights off</span>
+            </div>
+            <div style="padding:0 15px 15px">
+              <div style="width:80%; border-bottom:3px solid #fff; padding-bottom:6px; font-size:15px; color:#BBBBBB">Message June</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#888">Push-to-talk held</div>
+          <div style="width:411px; height:472px; background:#000; color:#fff; box-shadow:0 0 0 1px #2a2a2a; display:flex; flex-direction:column; overflow:hidden">
+            <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; gap:15px; padding:15px; overflow:hidden; opacity:0.35">
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">June</div>
+                <div style="font-size:15px; line-height:1.4">Done. Living room still at 40%.</div>
+              </div>
+            </div>
+            <div style="height:1px; background:#fff"></div>
+            <div style="padding:15px; display:flex; flex-direction:column; gap:15px">
+              <div style="display:flex; align-items:center; gap:9px">
+                <div style="width:9px; height:9px; background:#fff"></div>
+                <div style="font-size:9px; letter-spacing:0.14em; text-transform:uppercase">Listening</div>
+              </div>
+              <div style="font-size:24px; line-height:1.25; letter-spacing:-0.02em; text-wrap:pretty">turn the kitchen lights up and tell me what's on tomorrow<span style="color:#BBBBBB">▌</span></div>
+              <div style="display:flex; align-items:flex-end; gap:3px; height:24px">
+                <div style="width:3px; height:8px; background:#fff"></div><div style="width:3px; height:16px; background:#fff"></div><div style="width:3px; height:24px; background:#fff"></div><div style="width:3px; height:13px; background:#fff"></div><div style="width:3px; height:20px; background:#fff"></div><div style="width:3px; height:9px; background:#fff"></div><div style="width:3px; height:18px; background:#fff"></div><div style="width:3px; height:6px; background:#fff"></div><div style="width:3px; height:14px; background:#fff"></div><div style="width:3px; height:22px; background:#fff"></div><div style="width:3px; height:10px; background:#fff"></div><div style="width:3px; height:7px; background:#BBBBBB"></div><div style="width:3px; height:5px; background:#BBBBBB"></div>
+              </div>
+              <div style="font-size:11px; color:#BBBBBB">Release to cancel · press to send</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="1b" style="display:flex; flex-direction:column; gap:20px">
+      <div style="display:flex; align-items:baseline; gap:14px">
+        <div style="font-size:11px; font-weight:600; letter-spacing:0.1em; border:1px solid #000; padding:3px 8px">1B</div>
+        <div style="font-size:20px; letter-spacing:-0.01em">Transcript</div>
+        <div style="font-size:13px; color:#666">No sender labels. Alignment carries the voice; the deck is a ruled instrument strip.</div>
+      </div>
+
+      <div style="display:flex; gap:28px; flex-wrap:wrap">
+
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#888">Main — compact strip</div>
+          <div style="width:411px; height:472px; background:#000; color:#fff; box-shadow:0 0 0 1px #2a2a2a; display:flex; flex-direction:column; overflow:hidden">
+            <div style="display:flex; padding:15px 0">
+              <div style="flex:1; padding:0 15px; display:flex; flex-direction:column; align-items:center; gap:5px">
+                <div style="font-size:26px; line-height:1; letter-spacing:-0.02em">63°</div>
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">Rain 7pm</div>
+              </div>
+              <div style="width:1px; background:#BBBBBB"></div>
+              <div style="flex:1; padding:0 15px; display:flex; flex-direction:column; align-items:center; gap:5px">
+                <div style="font-size:26px; line-height:1; letter-spacing:-0.02em">7:30p</div>
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">Dinner</div>
+              </div>
+              <div style="width:1px; background:#BBBBBB"></div>
+              <div style="flex:1; padding:0 15px; display:flex; flex-direction:column; align-items:center; gap:5px">
+                <div style="font-size:26px; line-height:1; letter-spacing:-0.02em">3·1</div>
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">June</div>
+              </div>
+            </div>
+            <div style="height:1px; background:#fff"></div>
+
+            <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; gap:15px; padding:15px; overflow:hidden">
+              <div style="display:flex; align-items:center; gap:9px">
+                <div style="flex:1; height:1px; background:#BBBBBB"></div>
+                <div style="font-size:9px; letter-spacing:0.1em; color:#BBBBBB">08:12</div>
+                <div style="flex:1; height:1px; background:#BBBBBB"></div>
+              </div>
+              <div style="font-size:15px; line-height:1.4; padding-right:60px; text-wrap:pretty">Three things done overnight. Backup finished, invoice sent. The garage sensor is offline again.</div>
+              <div style="font-size:15px; line-height:1.4; font-weight:600; text-align:right; padding-left:90px">Kitchen to 100%</div>
+              <div style="font-size:15px; line-height:1.4; padding-right:60px">Done. Living room still at 40%.</div>
+            </div>
+
+            <div style="display:flex; flex-direction:column">
+              <div style="height:1px; background:#BBBBBB"></div>
+              <div style="display:flex; justify-content:space-between; padding:9px 15px; font-size:12px">
+                <span>Summarize my day</span><span style="color:#BBBBBB">↵</span>
+              </div>
+              <div style="height:1px; background:#BBBBBB"></div>
+              <div style="display:flex; justify-content:space-between; padding:9px 15px; font-size:12px">
+                <span>Lights off</span><span style="color:#BBBBBB">↵</span>
+              </div>
+              <div style="height:1px; background:#BBBBBB"></div>
+            </div>
+            <div style="padding:15px">
+              <div style="width:80%; border-bottom:3px solid #fff; padding-bottom:6px; font-size:15px; color:#BBBBBB">Say something</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#888">Deck expanded — 2 × 3</div>
+          <div style="width:411px; height:472px; background:#000; color:#fff; box-shadow:0 0 0 1px #2a2a2a; display:flex; flex-direction:column; overflow:hidden">
+            <div style="padding:15px 15px 12px; display:flex; flex-direction:column; gap:3px">
+              <div style="font-size:34px; line-height:1; letter-spacing:-0.03em">12:34</div>
+              <div style="font-size:11px; color:#BBBBBB">Mon 4 September · 84%</div>
+            </div>
+            <div style="height:1px; background:#fff"></div>
+            <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:1fr">
+              <div style="border-right:1px solid #BBBBBB; border-bottom:1px solid #BBBBBB; padding:15px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; text-align:center">
+                <div style="font-size:28px; line-height:1; letter-spacing:-0.02em">63°</div>
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">Rain 7pm</div>
+              </div>
+              <div style="border-bottom:1px solid #BBBBBB; padding:15px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; text-align:center">
+                <div style="font-size:28px; line-height:1; letter-spacing:-0.02em">7:30p</div>
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">Dinner, Keens</div>
+              </div>
+              <div style="border-right:1px solid #BBBBBB; border-bottom:1px solid #BBBBBB; padding:15px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; text-align:center">
+                <div style="font-size:28px; line-height:1; letter-spacing:-0.02em">6 min</div>
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">F uptown</div>
+              </div>
+              <div style="border-bottom:1px solid #BBBBBB; padding:15px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; text-align:center">
+                <div style="font-size:28px; line-height:1; letter-spacing:-0.02em">40%</div>
+                <div style="font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:#BBBBBB">Living room</div>
+              </div>
+              <div style="grid-column:span 2; padding:15px; display:flex; flex-direction:column; justify-content:center; gap:5px">
+                <div style="font-size:28px; line-height:1; letter-spacing:-0.02em">3 done · 1 waiting on you</div>
+                <div style="font-size:11px; color:#BBBBBB">June, since 06:40 — tap to read</div>
+              </div>
+            </div>
+            <div style="height:1px; background:#fff"></div>
+            <div style="display:flex; justify-content:space-between; padding:12px 15px; font-size:11px; color:#BBBBBB">
+              <span>Wheel click to collapse</span><span style="border-bottom:1px solid #BBBBBB; padding-bottom:2px; color:#fff">Edit deck</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#888">Deck collapsed</div>
+          <div style="width:411px; height:472px; background:#000; color:#fff; box-shadow:0 0 0 1px #2a2a2a; display:flex; flex-direction:column; overflow:hidden">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 15px 12px; font-size:12px">
+              <span>63° · 7:30p dinner · 2 pending</span>
+              <span style="color:#BBBBBB">▾</span>
+            </div>
+            <div style="height:1px; background:#fff"></div>
+            <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; gap:15px; padding:15px; overflow:hidden">
+              <div style="display:flex; align-items:center; gap:9px">
+                <div style="flex:1; height:1px; background:#BBBBBB"></div>
+                <div style="font-size:9px; letter-spacing:0.1em; color:#BBBBBB">Yesterday</div>
+                <div style="flex:1; height:1px; background:#BBBBBB"></div>
+              </div>
+              <div style="font-size:15px; line-height:1.4; font-weight:600; text-align:right; padding-left:75px">Wake me if the garage sensor drops again</div>
+              <div style="font-size:15px; line-height:1.4; padding-right:60px">Watching it. I'll push only if it stays down past five minutes.</div>
+              <div style="display:flex; align-items:center; gap:9px">
+                <div style="flex:1; height:1px; background:#BBBBBB"></div>
+                <div style="font-size:9px; letter-spacing:0.1em; color:#BBBBBB">08:12</div>
+                <div style="flex:1; height:1px; background:#BBBBBB"></div>
+              </div>
+              <div style="display:flex; gap:9px; padding-right:60px">
+                <div style="width:5px; height:5px; background:#fff; margin-top:6px; flex:none"></div>
+                <div style="font-size:15px; line-height:1.4; text-wrap:pretty">Three things done overnight. Backup finished, invoice sent. The garage sensor is offline again.</div>
+              </div>
+              <div style="font-size:15px; line-height:1.4; font-weight:600; text-align:right; padding-left:90px">Kitchen to 100%</div>
+              <div style="font-size:15px; line-height:1.4; padding-right:60px">Done. Living room still at 40%.</div>
+            </div>
+            <div style="height:1px; background:#BBBBBB"></div>
+            <div style="display:flex; justify-content:space-between; padding:9px 15px; font-size:12px">
+              <span>Summarize my day</span><span style="color:#BBBBBB">↵</span>
+            </div>
+            <div style="height:1px; background:#BBBBBB"></div>
+            <div style="padding:15px">
+              <div style="width:80%; border-bottom:3px solid #fff; padding-bottom:6px; font-size:15px; color:#BBBBBB">Say something</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <div style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#888">Push-to-talk held</div>
+          <div style="width:411px; height:472px; background:#fff; color:#000; box-shadow:0 0 0 1px #d9d9d6; display:flex; flex-direction:column; overflow:hidden">
+            <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:24px; padding:15px">
+              <div style="display:flex; align-items:center; gap:9px">
+                <div style="width:9px; height:9px; background:#000"></div>
+                <div style="font-size:9px; letter-spacing:0.14em; text-transform:uppercase">Listening</div>
+              </div>
+              <div style="font-size:26px; line-height:1.25; letter-spacing:-0.02em; text-wrap:pretty">turn the kitchen lights up and tell me what's on tomorrow<span style="color:#BBBBBB">▌</span></div>
+            </div>
+            <div style="padding:15px; display:flex; flex-direction:column; gap:12px">
+              <div style="display:flex; align-items:flex-end; gap:3px; height:24px">
+                <div style="width:3px; height:8px; background:#000"></div><div style="width:3px; height:16px; background:#000"></div><div style="width:3px; height:24px; background:#000"></div><div style="width:3px; height:13px; background:#000"></div><div style="width:3px; height:20px; background:#000"></div><div style="width:3px; height:9px; background:#000"></div><div style="width:3px; height:18px; background:#000"></div><div style="width:3px; height:6px; background:#000"></div><div style="width:3px; height:14px; background:#000"></div><div style="width:3px; height:22px; background:#000"></div><div style="width:3px; height:10px; background:#000"></div><div style="width:3px; height:7px; background:#BBBBBB"></div><div style="width:3px; height:5px; background:#BBBBBB"></div>
+              </div>
+              <div style="font-size:11px; color:#BBBBBB">Release to cancel · press to send</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <div style="max-width:900px; display:flex; flex-direction:column; gap:14px; border-top:1px solid #d5d5d2; padding-top:24px">
+    <div style="font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:#888">What separates them</div>
+    <div style="display:flex; gap:40px; flex-wrap:wrap; font-size:14px; line-height:1.6; color:#333">
+      <div style="flex:1; min-width:300px; text-wrap:pretty"><strong style="font-weight:600">1A Ledger.</strong> Sender labels on every message, tiles labeled left-aligned, one row per fact. Reads like a log — right if the user's mental model is "June keeps a record for me." Costs 12 dp of label above each message, so fewer messages fit.</div>
+      <div style="flex:1; min-width:300px; text-wrap:pretty"><strong style="font-weight:600">1B Transcript.</strong> No labels; June is left and full-width, you are right and set in medium. Ruled timestamp dividers, chips as full-width rows with a return glyph, PTT inverts the panel to white so the held state is unmistakable at arm's length. Denser, quieter, more Light-native — but alignment alone has to carry authorship.</div>
+    </div>
+    <div style="font-size:13px; line-height:1.6; color:#666; text-wrap:pretty">Open in both: the deck grid in 1B gives the agent digest a full-width row (it's the moat tile), 1A treats all six tiles as equals. Tell me which chassis to keep and I'll draw pairing, edit mode, digest detail and the lockscreen render on it.</div>
+  </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1900,&quot;height&quot;:1400}}"></script>
+</body>
+</html>

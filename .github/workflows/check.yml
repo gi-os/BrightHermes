@@ -1,0 +1,46 @@
+name: Check
+
+# A push to main builds, signs and publishes a release, so there is nowhere to find out whether
+# something compiles without also shipping it. This runs on every other branch and does exactly
+# that and nothing else — no keystore, no APK, no release.
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      GPR_USER: ${{ secrets.GPR_USER }}
+      GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+      - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+      - name: Cache speech model
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: app/build/speech-model
+          key: parakeet-110m-int8-v1
+
+      # `env -u CI` is load-bearing: build.gradle.kts refuses to configure a release build with
+      # no keystore *while CI is set*, and that check runs at configuration time — so it fires
+      # for assembleDebug too. This job has no secrets on purpose and publishes nothing.
+      - name: Compile
+        run: |
+          chmod +x ./gradlew
+          env -u CI ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Unit tests
+        run: env -u CI ./gradlew :app:testDebugUnitTest --stacktrace
