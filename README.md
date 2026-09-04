@@ -63,6 +63,16 @@ curl -X POST -H "Authorization: Bearer $T" https://hermes.basilnet.com/tiles/dig
 `notifyChange` on every fetch. Lock face = deck at rest; app = deck + conversation. One deck,
 two canvases, zero drift.
 
+## Bots beside June
+
+June is the agent — tools, memory, cron — and the default. The gateway can also front any
+OpenAI-compatible endpoint as a **bot** (`BOTS` in its `.env`: id, name, base URL, key, model,
+system prompt). The roster comes with the socket's `ok` frame; each user frame names its bot;
+the transcript on screen is one bot's at a time, and a plain bot's transcript is kept by the
+gateway since it has no memory of its own. With more than one configured, the listening bot's
+name sits at the right of the input row — tap it to talk to the next. A small local model there
+is the fast lane for spoken commands.
+
 ## Push-to-talk
 
 Hold the camera button's **first stage** to talk. Press it **all the way in** to send. Let go
