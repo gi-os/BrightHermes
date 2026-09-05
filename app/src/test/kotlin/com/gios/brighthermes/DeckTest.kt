@@ -124,6 +124,16 @@ class DeckTest {
     }
 
     @Test
+    fun `lock card parses, expires, and round-trips`() {
+        val c = com.gios.brighthermes.deck.LockCard.parse("""{"title":"Garage open","text":"since 6:40","expires_at":2000.5,"action":"brighthermes://chat","updated_at":1000}""")!!
+        assertTrue(c.live(1500.0))
+        assertFalse(c.live(2001.0))
+        assertEquals(c, com.gios.brighthermes.deck.LockCard.parse(c.toJson()))
+        assertNull(com.gios.brighthermes.deck.LockCard.parse("{}")?.takeIf { it.live(0.0) })
+        assertNull(com.gios.brighthermes.deck.LockCard.parse(""))
+    }
+
+    @Test
     fun `grid rows pair singles and give doubles their own row`() {
         val rows = packRows(listOf(Slot("a", 1) to 1, Slot("b", 1) to 2, Slot("c", 2) to 3, Slot("d", 1) to 4))
         assertEquals(listOf(2, 1, 1), rows.map { it.size })

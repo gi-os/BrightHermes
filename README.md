@@ -99,6 +99,16 @@ curl -X POST -H "Authorization: Bearer $T" -H "Content-Type: text/html" \
      --data-binary '<div class="big" id="s">…</div><script>brighthermes.fetch("/tiles/home").then(r=>r.json()).then(t=>s.textContent=t.value)</script>'
 ```
 
+## The lock face
+
+June can put **one card** on the lock screen: `POST /lock {"title","text","ttl_s"}` on the
+gateway. BrightControl v4.20 reads it off `content://com.gios.brighthermes.deck/lock` (at most one
+row: `title, text, expiresAt, action, updatedAt`) and draws it where the music player goes, in
+place of the player, until `DELETE /lock` or the clock runs out. With the app closed the provider
+answers from its cache and, on a lit-screen query, asks the gateway for a fresher card and
+`notifyChange`s — so the face's query-on-wake is what surfaces a card posted while the phone
+lay dark. One request per wake, none against a dark panel. See `deck/LockCard.kt`.
+
 ## Push-to-talk
 
 **Hold the wheel in** to talk; **let go** to send. A quick click walks the deck instead

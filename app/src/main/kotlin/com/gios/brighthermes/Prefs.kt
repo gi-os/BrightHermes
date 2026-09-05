@@ -31,6 +31,11 @@ class Prefs(context: Context) {
         get() = p.getString(K_DECK, null)
         set(v) = p.edit().putString(K_DECK, v).apply()
 
+    /** The last lock-face card, as JSON, or null. Read by the provider with the app closed. */
+    var cachedLock: String?
+        get() = p.getString(K_LOCK, null)
+        set(v) = p.edit().putString(K_LOCK, v).apply()
+
     /** How the deck is shown: strip, grid or line. Remembered because it is a preference, not a mode. */
     var deckMode: String
         get() = p.getString(K_MODE, "strip") ?: "strip"
@@ -56,6 +61,7 @@ class Prefs(context: Context) {
         private const val K_SERVER = "server"
         private const val K_TOKEN = "token"
         private const val K_DECK = "deck"
+        private const val K_LOCK = "lock"
         private const val K_MODE = "deck_mode"
         private const val K_DEVICE = "device"
 

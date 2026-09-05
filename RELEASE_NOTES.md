@@ -1,8 +1,10 @@
-## BrightHermes v0.3 — the wheel talks, June gets three windows, and answers find you
+## BrightHermes v0.4 — June can take the lock face
 
 **Hold the wheel in to talk.** The camera button was the plan and the phone had other plans: BrightControl sees every key before the focused window and by default spends the camera key on the camera and the wheel click on the torch, so neither reached this app. The wheel is the control whose *turns* always arrive, and BrightControl v4.19 now hands this app its press too. So: hold the wheel in, talk, let go — it sends. A quick click walks the deck (strip → grid → line). Turning while held is neither. This is Roll's press-and-turn split from `LightControls`, plus the one clock a hold needs because a held wheel never repeats. If turns reach the app but a hold never starts, the hint line says so and names the fix.
 
 **Three widgets June owns.** `web1`–`web3` on the deck are hers to draw: `POST /widgets/{n}` on the gateway with HTML — a fragment or a whole page — and the phone shows it in a WebView with JavaScript on, full width, as tall as she says. The page gets `window.brighthermes` (server, token, device) and a `brighthermes.fetch` that carries the auth headers, so a widget can read tiles, post to the journal or send June a message. Blank widgets are not drawn; filling one is what makes it appear, under the strip and in the grid. They stay off the lock face.
+
+**One card on the lock face.** `POST /lock` on the gateway with a title, a line and a lifetime, and BrightControl (v4.20) draws it where the music player goes, in place of the player, until it is cleared or runs out. The phone learns about it with the app closed: BrightControl asks this app's provider on every wake, the provider answers from its cache at once and, while the screen is on, asks the gateway for a fresher card in the background. A second later the face has it. The same card shows inverted at the top of the app while it is live.
 
 **Answers find you.** Lock the phone mid-reply and the socket stays up for that one turn — a small foreground notice says who is thinking — and when the answer lands it is posted as a notification, the whole text, silent. Open the app and it is in the transcript where it belongs. No more watching June work. Ten-minute cap so a turn that never ends cannot keep the phone up all night.
 

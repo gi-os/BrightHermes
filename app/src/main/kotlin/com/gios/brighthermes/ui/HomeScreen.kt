@@ -68,6 +68,7 @@ fun HomeScreen(vm: HermesViewModel, type: Type) {
     val voice by Listener.state.collectAsStateWithLifecycle()
     val bots by vm.bots.collectAsStateWithLifecycle()
     val bot by vm.bot.collectAsStateWithLifecycle()
+    val lock by vm.lock.collectAsStateWithLifecycle()
 
     // Staleness is judged against a clock that ticks once a minute, not against every recomposition.
     val now by produceState(System.currentTimeMillis() / 1000.0) {
@@ -83,6 +84,7 @@ fun HomeScreen(vm: HermesViewModel, type: Type) {
     }
 
     Column(Modifier.fillMaxSize().imePadding()) {
+        lock?.takeIf { it.live(now) }?.let { LockCardRow(it, type) }
         when (mode) {
             "grid" -> DeckGrid(
                 deck, local, type, now,
@@ -117,6 +119,19 @@ fun HomeScreen(vm: HermesViewModel, type: Type) {
             onHoldStart = { vm.pttDown() },
             onHoldEnd = { vm.pttCommit(); vm.pttUp() },
         )
+    }
+}
+
+/**
+ * The card that is also on the lock face right now. Inverted — the one filled shape in the app —
+ * because it is the one thing June decided could not wait.
+ */
+@Composable
+private fun LockCardRow(card: com.gios.brighthermes.deck.LockCard, type: Type) {
+    Column(Modifier.fillMaxWidth().background(Ink.Content).padding(horizontal = Grid, vertical = 12.dp)) {
+        Text("JUNE", style = type.label, color = Ink.Paper)
+        if (card.title.isNotBlank()) Text(card.title, style = type.bodyYou, color = Ink.Paper)
+        if (card.text.isNotBlank()) Text(card.text, style = type.small, color = Ink.Paper)
     }
 }
 

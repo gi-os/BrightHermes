@@ -9,6 +9,8 @@ import com.gios.brighthermes.chat.Message
 import com.gios.brighthermes.deck.Deck
 import com.gios.brighthermes.deck.DeckProvider
 import com.gios.brighthermes.deck.LocalTiles
+import com.gios.brighthermes.deck.LockCard
+import com.gios.brighthermes.deck.LockCards
 import com.gios.brighthermes.deck.Slot
 import com.gios.brighthermes.deck.Tile
 import com.gios.brighthermes.net.Api
@@ -51,6 +53,10 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _local = MutableStateFlow(LocalTiles.now(app))
     val local: StateFlow<Map<String, Tile>> = _local.asStateFlow()
+
+    /** The card on the lock face, if June has put one there. Shown in the app too, above the deck. */
+    private val _lock = MutableStateFlow(LockCards.cached(app))
+    val lock: StateFlow<LockCard?> = _lock.asStateFlow()
 
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
     val messages: StateFlow<List<Message>> = _messages.asStateFlow()
@@ -183,6 +189,8 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
                 _deck.value = parsed
                 if (parsed.chips.isNotEmpty()) _chips.value = parsed.chips
                 DeckProvider.changed(getApplication<Application>())
+                // The lock card rides along with every deck refresh; same moments, same rule.
+                _lock.value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { LockCards.fetch(getApplication<Application>()) }
             } catch (e: IOException) {
                 // Offline is not a fault; the cache is on screen. Say so only if there is no cache.
                 if (_deck.value.layout.isEmpty()) notice("Can't reach ${prefs.server.removePrefix("https://").removePrefix("http://")}")
