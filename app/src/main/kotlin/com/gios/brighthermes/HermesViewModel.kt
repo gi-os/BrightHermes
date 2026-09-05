@@ -37,7 +37,9 @@ import java.util.UUID
 class HermesViewModel(app: Application) : AndroidViewModel(app) {
 
     val prefs = Prefs(app)
-    private val device = prefs.deviceId(app)
+
+    /** This install's id, sent as `X-Device`; widgets get it too. */
+    val device = prefs.deviceId(app)
 
     val api = Api(server = { prefs.server }, token = { prefs.token }, device = { device })
     val socket = Socket(url = { Prefs.wsUrl(prefs.server, prefs.token) }, device = { device }, scope = viewModelScope, client = api.client)

@@ -38,7 +38,8 @@ class DeckProvider : ContentProvider() {
         val cursor = MatrixCursor(COLUMNS)
         if (uri.lastPathSegment != "tiles") return cursor
         val deck = runCatching { Prefs(ctx).cachedDeck?.let(Deck::parse) }.getOrNull() ?: return cursor
-        for ((slot, tile) in deck.rows(emptyMap())) {
+        // Widgets are HTML and the lock face draws text; they are not rows here.
+        for ((slot, tile) in deck.rows(emptyMap()).filter { !it.second.isWidget }) {
             cursor.addRow(arrayOf(tile.id, slot.span, tile.label, tile.value, tile.sub, tile.action, tile.updatedAt, tile.staleAt))
         }
         return cursor

@@ -21,14 +21,23 @@ data class Tile(
     val updatedAt: Double = 0.0,
     /** Epoch seconds after which the phone draws it dimmed; null never dims. */
     val staleAt: Double? = null,
+    /** A widget's page — a fragment or a whole document. Null for an ordinary tile. */
+    val html: String? = null,
+    /** A widget's height in grid units. */
+    val height: Int = 8,
 ) {
     fun isStale(nowSeconds: Double): Boolean = staleAt != null && nowSeconds > staleAt
+
+    /** A widget with something in it. A widget whose HTML is blank is not drawn at all. */
+    val isWidget: Boolean get() = html != null
+    val showable: Boolean get() = if (html != null) html.isNotBlank() else true
 
     fun toJson(): JSONObject = JSONObject().apply {
         put("label", label); put("value", value); put("sub", sub)
         action?.let { put("action", it) }
         put("updated_at", updatedAt)
         staleAt?.let { put("stale_at", it) }
+        html?.let { put("html", it); put("height", height) }
     }
 
     companion object {
@@ -40,6 +49,8 @@ data class Tile(
             action = o.optString("action").takeIf { it.isNotBlank() },
             updatedAt = o.optDouble("updated_at", 0.0),
             staleAt = if (o.has("stale_at") && !o.isNull("stale_at")) o.optDouble("stale_at") else null,
+            html = if (o.has("html") && !o.isNull("html")) o.optString("html") else null,
+            height = o.optInt("height", 8).coerceIn(2, 24),
         )
     }
 }
@@ -50,7 +61,7 @@ data class Slot(val id: String, val span: Int) {
     }
 }
 
-data class TileKind(val id: String, val name: String, val local: Boolean)
+data class TileKind(val id: String, val name: String, val local: Boolean, val html: Boolean = false)
 
 data class Deck(
     val layout: List<Slot>,
@@ -61,18 +72,21 @@ data class Deck(
 ) {
     /** The tiles in layout order, local ones pulled from [local]. Slots with nothing to show are skipped. */
     fun rows(local: Map<String, Tile>): List<Pair<Slot, Tile>> = layout.mapNotNull { slot ->
-        (tiles[slot.id] ?: local[slot.id])?.let { slot to it }
+        (tiles[slot.id] ?: local[slot.id])?.takeIf { it.showable }?.let { slot to it }
     }
 
-    /** What is worth putting in the one-line strip: the first three remote-or-local tiles that have a value. */
+    /** June's widgets that have something in them, in layout order. */
+    fun widgets(): List<Tile> = rows(emptyMap()).map { it.second }.filter { it.isWidget }
+
+    /** What is worth putting in the one-line strip: the first three tiles with a value. Widgets have none. */
     fun strip(local: Map<String, Tile>, n: Int = 3): List<Tile> =
-        rows(local).map { it.second }.filter { it.value.isNotBlank() && it.id != "clock" }.take(n)
+        rows(local).map { it.second }.filter { !it.isWidget && it.value.isNotBlank() && it.id != "clock" }.take(n)
 
     fun toJson(): String = JSONObject().apply {
         put("v", 1)
         put("layout", JSONArray().apply { layout.forEach { put(JSONObject().put("id", it.id).put("span", it.span)) } })
         put("tiles", JSONObject().apply { tiles.values.forEach { put(it.id, it.toJson()) } })
-        put("catalog", JSONArray().apply { catalog.forEach { put(JSONObject().put("id", it.id).put("name", it.name).put("local", it.local)) } })
+        put("catalog", JSONArray().apply { catalog.forEach { put(JSONObject().put("id", it.id).put("name", it.name).put("local", it.local).put("html", it.html)) } })
         put("chips", JSONArray(chips))
         put("updated_at", updatedAt)
     }.toString()
@@ -100,7 +114,7 @@ data class Deck(
             val catalog = o.optJSONArray("catalog")?.let { arr ->
                 (0 until arr.length()).mapNotNull { i ->
                     val c = arr.optJSONObject(i) ?: return@mapNotNull null
-                    TileKind(c.optString("id"), c.optString("name", c.optString("id")), c.optBoolean("local", false))
+                    TileKind(c.optString("id"), c.optString("name", c.optString("id")), c.optBoolean("local", false), c.optBoolean("html", false))
                 }
             } ?: emptyList()
             val chips = o.optJSONArray("chips")?.let { arr -> (0 until arr.length()).map { arr.optString(it) }.filter { it.isNotBlank() } }

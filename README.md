@@ -13,6 +13,10 @@ Package `com.gios.brighthermes`. Plain APK, `light-common`, no Google anything.
 ```
  63°          7:30p        3·1            ← the deck as a strip (tap: grid · long-press: edit)
  rain 7pm     Dinner       June
+ GARAGE                                    ← a widget June filled: her HTML, live, full width
+ ┌──────────────────────────────┐
+ │ open · since 6:40            │
+ └──────────────────────────────┘
  ──────────────────────────────────
                           Kitchen to 100%  ← you, right, medium
  Done. Living room still at 40%.           ← June, left, full width
@@ -20,7 +24,7 @@ Package `com.gios.brighthermes`. Plain APK, `light-common`, no Google anything.
  Summarize my day                       ↵  ← chips from the server
  Say something                             ← LightTextField, 3dp underline, 80% width
  ───
- Hold here, or the camera button, to talk
+ Hold the wheel in, or hold here, to talk to June
 ```
 
 A wheel click cycles the deck: strip → grid → line. In the grid the clock gets the big face and
@@ -73,10 +77,37 @@ frame names its bot; the transcript on screen is one bot's at a time. With more 
 configured, the listening bot's name sits at the right of the input row — tap it to talk to the
 next.
 
+## Widgets
+
+Three tiles June draws herself: `web1`, `web2`, `web3`. Whatever HTML lands on the gateway's
+`POST /widgets/{n}` — a fragment or a whole page, JSON `{"html", "height", "label"}` or a raw
+`text/html` body — is what the phone shows, in a WebView with JavaScript on, full width,
+`height` grid units tall (15dp each, default 8). Before the page runs it gets
+`window.brighthermes = {server, token, device}` and a `brighthermes.fetch(path, opts)` that adds
+the auth headers, so a widget can read a tile, post to the journal or talk to June and be a live
+little app rather than a picture. Links stay inside; nothing opens a browser.
+
+A widget with blank HTML is not drawn, so the three cost nothing until June fills one. They show
+under the strip in the default view and as full-width rows in the grid. Not on the lock face.
+
+```
+curl -X POST -H "Authorization: Bearer $T" -H "Content-Type: text/html" \
+     "https://hermes.basilnet.com/widgets/1?height=6&label=Garage" \
+     --data-binary '<div class="big" id="s">…</div><script>brighthermes.fetch("/tiles/home").then(r=>r.json()).then(t=>s.textContent=t.value)</script>'
+```
+
 ## Push-to-talk
 
-Hold the camera button's **first stage** to talk. Press it **all the way in** to send. Let go
-without pressing and nothing is sent. The panel inverts to white while you hold it.
+**Hold the wheel in** to talk; **let go** to send. A quick click walks the deck instead
+(strip → grid → line), and turning while held is neither. The panel inverts to white while you
+hold it. The camera button does the same hold where BrightControl lets it through.
+
+This needs BrightControl v4.19 or later, which gives BrightHermes the whole wheel. Before that
+the service spent the wheel click on the torch and the camera key on the camera before either
+reached this app — the same fault Roll's dial lock had. If the wheel's turns scroll the
+transcript but a hold never starts, the hint line under the input says so and names the fix.
+`hw/WheelTalk.kt` is the port of Roll's `LightControls` press-and-turn split, plus the one clock a
+hold needs because a held wheel never repeats.
 
 Transcription is on the phone: NVIDIA Parakeet TDT 110M (int8) through sherpa-onnx — the same
 model and code BrightThumb ships for voice typing, ported in `voice/Listener.kt`. A transducer
@@ -84,7 +115,7 @@ decodes only the audio it was given, so a short command is text in a few hundred
 once the model is warm (it is warmed on open). Gradle fetches the model at build time; nothing
 is downloaded on the phone and no audio leaves it.
 
-The camera button arrives as ordinary key events — LightOS dispatches `FOCUS` and `CAMERA` to
+The keys arrive as ordinary key events — LightOS dispatches the wheel and camera scancodes to
 the focused window, and `light-common`'s `LightKeys` names them — so there is no service and
 no special permission behind this, only `RECORD_AUDIO`.
 

@@ -39,9 +39,10 @@ import kotlin.math.sqrt
  *
  * ## The gesture
  *
- * Hold the camera button's first stage to talk. Press it all the way in to send; let go
- * without pressing and nothing is sent. [start] / [commit] / [release] are those three moments.
- * The same three are wired to a long-press on the input row for a phone with no free hand.
+ * Hold the wheel in to talk; let go to send. [start] on the hold, [commit] then [release] on the
+ * let-go. [commit] exists separately so a caller that wants a discard path — the activity going
+ * away, a cancel gesture — can call [release] without it and nothing is sent. The same three are
+ * wired to a long-press on the hint line for a phone in a pocket.
  */
 object Listener {
     const val SAMPLE_RATE = 16000

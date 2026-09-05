@@ -90,6 +90,40 @@ class DeckTest {
     }
 
     @Test
+    fun `widgets parse, hide when blank, take a row, and stay off the strip`() {
+        val d = Deck.parse(
+            """{"layout":[{"id":"weather","span":1},{"id":"web1","span":1},{"id":"web2","span":2}],
+                "tiles":{"weather":{"label":"NYC","value":"63°","sub":""},
+                         "web1":{"label":"Garage","value":"","sub":"","html":"<b>open</b>","height":4},
+                         "web2":{"label":"Widget 2","value":"","sub":"","html":"","height":8}},
+                "catalog":[{"id":"web1","name":"Widget 1","local":false,"html":true}],"chips":[],"updated_at":1}""",
+        )
+        val w1 = d.tiles.getValue("web1")
+        assertTrue(w1.isWidget && w1.showable && w1.height == 4)
+        assertFalse(d.tiles.getValue("web2").showable)
+        assertEquals(listOf("weather", "web1"), d.rows(emptyMap()).map { it.second.id })
+        assertEquals(listOf("web1"), d.widgets().map { it.id })
+        assertEquals(listOf("weather"), d.strip(emptyMap()).map { it.id })
+        assertTrue(d.catalog.single().html)
+        // A widget in a half slot still gets its own row.
+        val rows = packRows(d.rows(emptyMap())) { it.isWidget }
+        assertEquals(listOf(1, 1), rows.map { it.size })
+        // And it round-trips through the cache with its HTML intact.
+        assertEquals("<b>open</b>", Deck.parse(d.toJson()).tiles.getValue("web1").html)
+    }
+
+    @Test
+    fun `widget document wraps a fragment and leaves a page alone`() {
+        val frag = com.gios.brighthermes.ui.document("<b>hi</b>", "https://h", "tok", "lp3-x")
+        assertTrue(frag.startsWith("<!doctype html>"))
+        assertTrue(frag.contains("window.brighthermes={") && frag.contains("\"token\":\"tok\"") && frag.contains("\"device\":\"lp3-x\""))
+        assertTrue(frag.contains("<body><b>hi</b></body>"))
+        val page = com.gios.brighthermes.ui.document("<html><head><title>x</title></head><body>y</body></html>", "https://h", "tok", "d")
+        assertTrue(page.startsWith("<html><head><script>window.brighthermes="))
+        assertTrue(page.endsWith("<body>y</body></html>"))
+    }
+
+    @Test
     fun `grid rows pair singles and give doubles their own row`() {
         val rows = packRows(listOf(Slot("a", 1) to 1, Slot("b", 1) to 2, Slot("c", 2) to 3, Slot("d", 1) to 4))
         assertEquals(listOf(2, 1, 1), rows.map { it.size })

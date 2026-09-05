@@ -1,12 +1,7 @@
-## BrightHermes v0.1 — the deck, and June under it
+## BrightHermes v0.2 — the wheel talks, and June gets three windows
 
-**First build.** A glanceable agent for the Light Phone III: an Info Deck on top, a conversation with June below, and a quiet pipe carrying what the other Bright apps know back to her.
+**Hold the wheel in to talk.** The camera button was the plan and the phone had other plans: BrightControl sees every key before the focused window and by default spends the camera key on the camera and the wheel click on the torch, so neither reached this app. The wheel is the control whose *turns* always arrive, and BrightControl v4.19 now hands this app its press too. So: hold the wheel in, talk, let go — it sends. A quick click walks the deck (strip → grid → line). Turning while held is neither. This is Roll's press-and-turn split from `LightControls`, plus the one clock a hold needs because a held wheel never repeats. If turns reach the app but a hold never starts, the hint line says so and names the fix.
 
-- **The deck.** Weather, what's next on the calendar, the home, and June's own digest, as `label · value · sub` tiles on a two-column grid. Three states — a strip, the full grid, a single line — and a wheel click walks between them. Long-press the strip to rearrange; the arrangement is kept on the server per phone, so a reinstall gets it back.
-- **The conversation.** Direction 1B from the design brief: no sender labels, June left and full width, you right and set in medium. Replies stream in; a two-frame blink stands in for a spinner and names the tool June is using. The transcript is June's own session on the server — the phone keeps nothing.
-- **Push-to-talk.** Hold the camera button's first stage to talk, press it all the way to send, let go without pressing to throw it away. Transcribed on the phone with Parakeet through sherpa-onnx — BrightThumb's voice code — so a two-second command is text in a few hundred milliseconds and works with no signal.
-- **Bots beside June.** Other Hermes agents the gateway lists — another profile, another box — are one tap away at the right of the input row; same frames, same sessions.
-- **For the lock face.** `content://com.gios.brighthermes.deck/tiles` hands BrightControl the same snapshot the app draws.
-- **Setup** is a server and a token. `hermes.basilnet.com` is prefilled; anyone running the gateway points it at theirs.
+**Three widgets June owns.** `web1`–`web3` on the deck are hers to draw: `POST /widgets/{n}` on the gateway with HTML — a fragment or a whole page — and the phone shows it in a WebView with JavaScript on, full width, as tall as she says. The page gets `window.brighthermes` (server, token, device) and a `brighthermes.fetch` that carries the auth headers, so a widget can read tiles, post to the journal or send June a message. Blank widgets are not drawn; filling one is what makes it appear, under the strip and in the grid. They stay off the lock face.
 
-Server side: the `brighthermes-gw` gateway on BasilNet, in front of a Hermes Agent's API server.
+Needs the gateway from the same day (`/widgets`), and BrightControl v4.19 for the wheel click.

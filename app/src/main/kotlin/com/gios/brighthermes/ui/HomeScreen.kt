@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gios.brighthermes.HermesViewModel
 import com.gios.brighthermes.chat.Message
+import com.gios.brighthermes.hw.WheelTalk
 import com.gios.brighthermes.voice.Listener
 import com.gios.light.common.hw.WheelScroll
 import kotlinx.coroutines.coroutineScope
@@ -53,8 +54,8 @@ import java.time.format.DateTimeFormatter
  *
  * No sender labels. June is left and full width; you are right and set in medium. Ruled
  * timestamp dividers where the conversation skipped more than an hour. Chips are full-width
- * rows with a return glyph. While the camera button is held the whole panel inverts to white,
- * so the held state is unmistakable at arm's length.
+ * rows with a return glyph. While the wheel is held in the whole panel inverts to white, so the
+ * held state is unmistakable at arm's length.
  */
 @Composable
 fun HomeScreen(vm: HermesViewModel, type: Type) {
@@ -83,9 +84,19 @@ fun HomeScreen(vm: HermesViewModel, type: Type) {
 
     Column(Modifier.fillMaxSize().imePadding()) {
         when (mode) {
-            "grid" -> DeckGrid(deck, local, type, now, onCollapse = { vm.setDeckMode("strip") }, onEdit = { vm.setEditing(true) })
+            "grid" -> DeckGrid(
+                deck, local, type, now,
+                onCollapse = { vm.setDeckMode("strip") },
+                onEdit = { vm.setEditing(true) },
+                widget = { tile -> WidgetView(tile, type, vm.prefs.server, vm.prefs.token, vm.device) },
+            )
             "line" -> DeckLine(deck.strip(local), type, onOpen = { vm.setDeckMode("strip") })
-            else -> DeckStrip(deck.strip(local), type, now, onOpen = { vm.setDeckMode("grid") }, onEdit = { vm.setEditing(true) })
+            else -> DeckStrip(
+                deck.strip(local), deck.widgets(), type, now,
+                onOpen = { vm.setDeckMode("grid") },
+                onEdit = { vm.setEditing(true) },
+                widget = { tile -> WidgetView(tile, type, vm.prefs.server, vm.prefs.token, vm.device) },
+            )
         }
 
         Transcript(messages, type, Modifier.weight(1f))
@@ -127,7 +138,7 @@ private fun Transcript(messages: List<Message>, type: Type, modifier: Modifier) 
         if (messages.isEmpty()) {
             item {
                 Text(
-                    "Say something, or hold the camera button.",
+                    "Say something, or hold the wheel in.",
                     style = type.body,
                     color = Ink.Secondary,
                     modifier = Modifier.fillMaxWidth().padding(vertical = Grid * 2),
@@ -301,7 +312,7 @@ private fun Composer(
         // than a tap starts listening; letting go sends. The camera button is the real control,
         // this is for the hand that is holding a coffee.
         Text(
-            notice ?: "Hold here, or the camera button, to talk to $botName",
+            notice ?: WheelTalk.Witness.warning() ?: "Hold the wheel in, or hold here, to talk to $botName",
             style = type.label,
             color = Ink.Secondary,
             modifier = Modifier
@@ -348,6 +359,6 @@ private fun ListeningPanel(type: Type, state: Listener.State) {
                 Box(Modifier.fillMaxWidth(level.coerceIn(0.02f, 1f)).fillMaxHeight().background(Ink.Paper))
             }
         }
-        Text("Press to send · release to cancel", style = type.label, color = Ink.Paper)
+        Text("Let go to send", style = type.label, color = Ink.Paper)
     }
 }

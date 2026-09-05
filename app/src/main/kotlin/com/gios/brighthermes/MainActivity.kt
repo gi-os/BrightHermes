@@ -20,9 +20,8 @@ import com.gios.brighthermes.ui.BrightHermesTheme
 import com.gios.brighthermes.ui.EditDeckScreen
 import com.gios.brighthermes.ui.HomeScreen
 import com.gios.brighthermes.ui.SetupScreen
+import com.gios.brighthermes.hw.WheelTalk
 import com.gios.brighthermes.voice.Listener
-import com.gios.light.common.hw.LightKey
-import com.gios.light.common.hw.LightKeys
 import com.gios.light.common.hw.LocalWheelBus
 import com.gios.light.common.hw.WheelBus
 import com.gios.light.common.report.LightReport
@@ -31,11 +30,10 @@ import com.gios.light.common.report.ReportOverlay
 /**
  * The activity. Hardware in, screens out.
  *
- * Wheel turns go onto the [WheelBus] for whichever list is on screen; a wheel click toggles the
- * deck between strip and grid. The camera button is push-to-talk: first stage down starts
- * listening, second stage marks the take as one to send, first stage up ends it. All of that
- * arrives as ordinary key events because LightOS dispatches the buttons to the focused window
- * (see light-common's `LightKeys`), so there is no service and no permission behind it.
+ * Every physical control goes through [WheelTalk]: turns scroll whatever list is on screen, a
+ * click cycles the deck, and holding the wheel in is push-to-talk — release sends. The camera
+ * button does the same where BrightControl lets it through. See `hw/WheelTalk.kt` for why the
+ * wheel is the primary control and not the camera button.
  *
  * Network only while in front: `onStart` opens the socket and refreshes the deck, `onStop`
  * closes everything. A screen-on while in front refreshes the deck again.
@@ -55,8 +53,17 @@ class MainActivity : ComponentActivity() {
         if (granted) Listener.warm(this)
     }
 
-    /** True while the camera button's first stage is down, so a repeat does not restart the take. */
-    private var focusHeld = false
+    private val controls = WheelTalk(
+        wheel = wheel,
+        onClick = { vm.cycleDeckMode() },
+        onHoldStart = {
+            if (Listener.hasPermission(this)) vm.pttDown() else micPermission.launch(Manifest.permission.RECORD_AUDIO)
+        },
+        onHoldEnd = {
+            vm.pttCommit()
+            vm.pttUp()
+        },
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -86,6 +93,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         ContextCompat.registerReceiver(this, screenOn, IntentFilter(Intent.ACTION_SCREEN_ON), ContextCompat.RECEIVER_NOT_EXPORTED)
+        WheelTalk.Witness.watchFrom()
         vm.foreground()
         if (vm.prefs.configured && !Listener.hasPermission(this)) {
             micPermission.launch(Manifest.permission.RECORD_AUDIO)
@@ -95,51 +103,10 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         runCatching { unregisterReceiver(screenOn) }
         vm.background()
-        focusHeld = false
+        controls.reset()
         super.onStop()
     }
 
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        when (LightKeys.of(event)) {
-            LightKey.WheelUp -> {
-                if (event.action == KeyEvent.ACTION_DOWN) wheel.send(1)
-                return true
-            }
-            LightKey.WheelDown -> {
-                if (event.action == KeyEvent.ACTION_DOWN) wheel.send(-1)
-                return true
-            }
-            LightKey.WheelClick -> {
-                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) vm.cycleDeckMode()
-                return true
-            }
-            LightKey.Focus -> {
-                when (event.action) {
-                    KeyEvent.ACTION_DOWN -> if (!focusHeld) {
-                        focusHeld = true
-                        if (Listener.hasPermission(this)) vm.pttDown() else micPermission.launch(Manifest.permission.RECORD_AUDIO)
-                    }
-                    KeyEvent.ACTION_UP -> {
-                        focusHeld = false
-                        vm.pttUp()
-                    }
-                }
-                return true
-            }
-            LightKey.Camera -> {
-                // The full press. Order against Focus is not guaranteed, so a Camera down that
-                // arrives first also starts the take rather than being lost.
-                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-                    if (!focusHeld) {
-                        focusHeld = true
-                        if (Listener.hasPermission(this)) vm.pttDown()
-                    }
-                    vm.pttCommit()
-                }
-                return true
-            }
-            null -> Unit
-        }
-        return super.dispatchKeyEvent(event)
-    }
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
+        controls.dispatch(event) || super.dispatchKeyEvent(event)
 }

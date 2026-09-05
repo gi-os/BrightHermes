@@ -63,22 +63,39 @@ fun TileView(tile: Tile, type: Type, now: Double, modifier: Modifier = Modifier,
     }
 }
 
-/** Three tiles in a row over a rule. The default. Tap to open the grid; long-press to edit. */
+/**
+ * Three tiles in a row over a rule. The default. Tap to open the grid; long-press to edit.
+ * June's widgets, when she has filled any, sit under the strip at full width — they are hers to
+ * show, so they show in the mode the phone spends its time in.
+ */
 @Composable
-fun DeckStrip(tiles: List<Tile>, type: Type, now: Double, onOpen: () -> Unit, onEdit: () -> Unit) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .combinedClickable(onClick = onOpen, onLongClick = onEdit),
-    ) {
+fun DeckStrip(
+    tiles: List<Tile>,
+    widgets: List<Tile>,
+    type: Type,
+    now: Double,
+    onOpen: () -> Unit,
+    onEdit: () -> Unit,
+    widget: @Composable (Tile) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = Grid, vertical = Grid),
+            Modifier
+                .fillMaxWidth()
+                .combinedClickable(onClick = onOpen, onLongClick = onEdit)
+                .padding(horizontal = Grid, vertical = Grid),
             horizontalArrangement = Arrangement.spacedBy(Grid),
         ) {
             if (tiles.isEmpty()) {
                 Text("Deck", style = type.label, color = Ink.Secondary)
             }
             tiles.forEach { TileView(it, type, now, Modifier.weight(1f)) }
+        }
+        if (widgets.isNotEmpty()) {
+            Column(Modifier.padding(horizontal = Grid, vertical = 0.dp), verticalArrangement = Arrangement.spacedBy(Grid)) {
+                widgets.forEach { widget(it) }
+            }
+            Spacer(Modifier.height(Grid))
         }
         Rule()
     }
@@ -89,7 +106,16 @@ fun DeckStrip(tiles: List<Tile>, type: Type, now: Double, onOpen: () -> Unit, on
  * a double span takes one. The clock gets the big face. Wheel click or the header collapses it.
  */
 @Composable
-fun DeckGrid(deck: Deck, local: Map<String, Tile>, type: Type, now: Double, onCollapse: () -> Unit, onEdit: () -> Unit) {
+fun DeckGrid(
+    deck: Deck,
+    local: Map<String, Tile>,
+    type: Type,
+    now: Double,
+    onCollapse: () -> Unit,
+    onEdit: () -> Unit,
+    /** How a widget tile is drawn — a WebView, from HomeScreen, which knows the server and token. */
+    widget: @Composable (Tile) -> Unit,
+) {
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().clickable(onClick = onCollapse).padding(horizontal = Grid, vertical = 12.dp),
@@ -98,14 +124,21 @@ fun DeckGrid(deck: Deck, local: Map<String, Tile>, type: Type, now: Double, onCo
             Text("DECK", style = type.label, color = Ink.Secondary, modifier = Modifier.weight(1f))
             Text("Edit", style = type.small, color = Ink.Content, modifier = Modifier.clickable(onClick = onEdit))
         }
-        val rows = packRows(deck.rows(local))
+        val rows = packRows(deck.rows(local)) { it.isWidget }
         Column(Modifier.padding(horizontal = Grid), verticalArrangement = Arrangement.spacedBy(Grid)) {
             rows.forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Grid)) {
                     row.forEach { (slot, tile) ->
-                        TileView(tile, type, now, Modifier.weight(slot.span.toFloat()), big = tile.id == "clock" && slot.span == 2)
+                        if (tile.isWidget) {
+                            // A widget always takes the row, whatever its slot says: a WebView
+                            // squeezed into half a column is unreadable and June cannot know
+                            // which half she got.
+                            widget(tile)
+                        } else {
+                            TileView(tile, type, now, Modifier.weight(slot.span.toFloat()), big = tile.id == "clock" && slot.span == 2)
+                        }
                     }
-                    if (row.size == 1 && row[0].first.span == 1) Spacer(Modifier.weight(1f))
+                    if (row.size == 1 && row[0].first.span == 1 && !row[0].second.isWidget) Spacer(Modifier.weight(1f))
                 }
             }
         }
@@ -139,12 +172,15 @@ fun DeckLine(tiles: List<Tile>, type: Type, onOpen: () -> Unit) {
     }
 }
 
-/** Pack `(slot, tile)` pairs into grid rows: singles pair up, doubles stand alone. */
-fun <T> packRows(items: List<Pair<Slot, T>>): List<List<Pair<Slot, T>>> {
+/**
+ * Pack `(slot, tile)` pairs into grid rows: singles pair up, doubles stand alone. [wide] says which
+ * items take a whole row regardless of their slot — widgets do.
+ */
+fun <T> packRows(items: List<Pair<Slot, T>>, wide: (T) -> Boolean = { false }): List<List<Pair<Slot, T>>> {
     val rows = mutableListOf<MutableList<Pair<Slot, T>>>()
     var open: MutableList<Pair<Slot, T>>? = null
     for (item in items) {
-        if (item.first.span == 2) {
+        if (item.first.span == 2 || wide(item.second)) {
             open = null
             rows += mutableListOf(item)
         } else if (open == null) {
