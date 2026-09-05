@@ -21,6 +21,7 @@ import com.gios.brighthermes.ui.EditDeckScreen
 import com.gios.brighthermes.ui.HomeScreen
 import com.gios.brighthermes.ui.SetupScreen
 import com.gios.brighthermes.hw.WheelTalk
+import com.gios.brighthermes.notify.Notifier
 import com.gios.brighthermes.voice.Listener
 import com.gios.light.common.hw.LocalWheelBus
 import com.gios.light.common.hw.WheelBus
@@ -51,6 +52,10 @@ class MainActivity : ComponentActivity() {
 
     private val micPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) Listener.warm(this)
+    }
+
+    private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        if (granted[Manifest.permission.RECORD_AUDIO] == true) Listener.warm(this)
     }
 
     private val controls = WheelTalk(
@@ -95,8 +100,14 @@ class MainActivity : ComponentActivity() {
         ContextCompat.registerReceiver(this, screenOn, IntentFilter(Intent.ACTION_SCREEN_ON), ContextCompat.RECEIVER_NOT_EXPORTED)
         WheelTalk.Witness.watchFrom()
         vm.foreground()
-        if (vm.prefs.configured && !Listener.hasPermission(this)) {
-            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+        if (vm.prefs.configured) {
+            // Microphone for the wheel, notifications for the answers that land after you lock
+            // the phone. One prompt for both, once.
+            val wanted = buildList {
+                if (!Listener.hasPermission(this@MainActivity)) add(Manifest.permission.RECORD_AUDIO)
+                if (!Notifier.canPost(this@MainActivity)) add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            if (wanted.isNotEmpty()) permissions.launch(wanted.toTypedArray())
         }
     }
 

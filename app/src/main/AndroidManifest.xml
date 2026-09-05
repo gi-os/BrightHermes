@@ -6,6 +6,13 @@
          Audio is transcribed on the phone; only the text leaves it. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <!-- A reply that lands while the app is closed is posted as a notification, so a long turn
+         does not have to be watched. Asked for at first open, beside the microphone. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- ReplyService: holds the socket for one turn after the app leaves the front. remoteMessaging
+         is the type for "waiting on a message from a server", and it is not time-capped. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
 
     <application
         android:name=".App"
@@ -35,6 +42,12 @@
                 <data android:scheme="brighthermes" />
             </intent-filter>
         </activity>
+
+        <!-- Alive only while an answer is on its way and the app is not in front. See notify/ReplyService. -->
+        <service
+            android:name=".notify.ReplyService"
+            android:exported="false"
+            android:foregroundServiceType="remoteMessaging" />
 
         <!-- The deck at rest, for BrightControl's lock face. Read-only, exported, no permission:
              the same pattern as com.gios.lightfog.stays. See deck/DeckProvider. -->

@@ -13,6 +13,8 @@ import com.gios.brighthermes.deck.Slot
 import com.gios.brighthermes.deck.Tile
 import com.gios.brighthermes.net.Api
 import com.gios.brighthermes.net.Socket
+import com.gios.brighthermes.notify.Notifier
+import com.gios.brighthermes.notify.ReplyService
 import com.gios.brighthermes.voice.Listener
 import com.gios.light.common.report.Trouble
 import kotlinx.coroutines.Job
@@ -104,8 +106,15 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
 
     // -- lifecycle -------------------------------------------------------------------------------
 
+    /** True between `onStop` and the next `onStart`: the phone is locked or another app is up. */
+    private var away = false
+
     /** The activity is in front: connect, refresh, tick the clock. */
     fun foreground() {
+        away = false
+        val app = getApplication<Application>()
+        ReplyService.stop(app)
+        Notifier.clear(app)
         if (!prefs.configured) return
         socket.open()
         refresh()
@@ -121,11 +130,42 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** The activity is gone: no socket, no timers, no network. */
+    /**
+     * The activity is gone: no timers, no listening, and no network — with one exception. If a
+     * reply is still on its way, the socket stays up under [ReplyService] until it lands, and the
+     * answer is posted as a notification instead of being lost to the lock button.
+     */
     fun background() {
-        socket.close()
+        away = true
         clockJob?.cancel()
         Listener.cancel()
+        val waiting = inFlight
+        if (waiting != null && socket.state.value != Socket.State.OFF) {
+            val who = _all.value.firstOrNull { it.id == waiting }?.bot?.let { id -> _bots.value.firstOrNull { it.id == id }?.name } ?: "June"
+            ReplyService.start(getApplication<Application>(), who)
+            // The service caps itself; this closes the socket when that cap is reached.
+            viewModelScope.launch {
+                delay(ReplyService.MAX_MS)
+                if (away && inFlight == waiting) settleAway(waiting, null)
+            }
+        } else {
+            socket.close()
+        }
+    }
+
+    /**
+     * A turn ended while the app was away. Post it, hang up, let the service go.
+     * [text] null means it ended without an answer.
+     */
+    private fun settleAway(replyId: String, text: String?) {
+        val app = getApplication<Application>()
+        val m = _all.value.firstOrNull { it.id == replyId }
+        val who = m?.bot?.let { id -> _bots.value.firstOrNull { it.id == id }?.name } ?: "June"
+        val body = text ?: m?.text?.takeIf { it.isNotBlank() }
+        Notifier.reply(app, who, body ?: "Didn't get an answer. Open to try again.")
+        if (inFlight == replyId) inFlight = null
+        socket.close()
+        ReplyService.stop(app)
     }
 
     /** Screen came on with the app still in front: the deck may be old. */
@@ -269,7 +309,9 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
                 list.map { if (it.id == f.id && it.text.isEmpty()) it.copy(thinking = true) else it }
             }
             is Frame.Done -> {
-                if (inFlight == f.id) inFlight = null
+                val wasInFlight = inFlight == f.id
+                if (wasInFlight) inFlight = null
+                if (away && wasInFlight) settleAway(f.id, f.text.ifBlank { null })
                 updateAll { list ->
                     list.mapNotNull {
                         if (it.id != f.id) it
@@ -283,6 +325,7 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
             }
             is Frame.Error -> {
                 if (f.id != null) {
+                    if (away && inFlight == f.id) settleAway(f.id, "Couldn't answer: ${f.message}")
                     if (inFlight == f.id) inFlight = null
                     updateAll { list -> list.filterNot { it.id == f.id && it.text.isBlank() }.map { if (it.id == f.id) it.copy(pending = false, tool = null) else it } }
                 }
@@ -350,5 +393,7 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         socket.close()
+        // The task was swiped away with a turn in flight: nothing is left to receive the answer.
+        ReplyService.stop(getApplication<Application>())
     }
 }

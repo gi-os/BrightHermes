@@ -43,8 +43,11 @@ The app only ever talks to the gateway: `GET /deck`, `PUT /deck/layout`, `GET /t
 `POST /ingest`, and `WS /ws` for chat. One bearer token, one `X-Device` header. The protocol is
 documented at the top of the gateway's `app.py` and mirrored in `chat/Protocol.kt`.
 
-**Network only while in front.** `onStart` opens the socket and refreshes the deck; `onStop`
-closes everything. A screen-on while the app is in front refreshes the deck again. Nothing polls
+**Network only while in front — with one exception.** `onStart` opens the socket and refreshes
+the deck; `onStop` closes everything, unless a reply is still on its way. Then `ReplyService`
+keeps the process up under a quiet foreground notice for that one turn, the answer is posted as
+a notification when it lands (silent, full text, tap opens the app), and the socket closes. Ten
+minutes at most. A screen-on while the app is in front refreshes the deck again. Nothing polls
 while the panel is dark — the lesson every Bright app that touched the lock face had to learn.
 
 ## The deck
