@@ -65,13 +65,13 @@ two canvases, zero drift.
 
 ## Bots beside June
 
-June is the agent — tools, memory, cron — and the default. The gateway can also front any
-OpenAI-compatible endpoint as a **bot** (`BOTS` in its `.env`: id, name, base URL, key, model,
-system prompt). The roster comes with the socket's `ok` frame; each user frame names its bot;
-the transcript on screen is one bot's at a time, and a plain bot's transcript is kept by the
-gateway since it has no memory of its own. With more than one configured, the listening bot's
-name sits at the right of the input row — tap it to talk to the next. A small local model there
-is the fast lane for spoken commands.
+June is the default. The gateway can list other **Hermes agents** as bots (`BOTS` in its `.env`:
+id, name, url, key) — a second profile on June's own gateway, or a Hermes running on another
+box. Each is a whole agent, so the phone gets the same sessions, tool markers and server-kept
+transcript from every one of them. The roster comes with the socket's `ok` frame; each user
+frame names its bot; the transcript on screen is one bot's at a time. With more than one
+configured, the listening bot's name sits at the right of the input row — tap it to talk to the
+next.
 
 ## Push-to-talk
 

@@ -76,8 +76,9 @@ object Frames {
 }
 
 /**
- * Someone to talk to. June is the agent behind the gateway; any other bot is an OpenAI-compatible
- * endpoint the gateway was configured with (`BOTS`). Same frames either way; the phone only picks.
+ * Someone to talk to. June is the default; any other bot is another Hermes agent the gateway was
+ * configured with (`BOTS`) — a second profile on June's gateway, or a Hermes on another box.
+ * Same frames, same sessions, same tool markers; the phone only picks.
  */
 data class Bot(val id: String, val name: String) {
     companion object {

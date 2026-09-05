@@ -63,7 +63,7 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
     private val _chips = MutableStateFlow(_deck.value.chips)
     val chips: StateFlow<List<String>> = _chips.asStateFlow()
 
-    /** Who can be talked to, June first. Comes with the socket's `ok`; until then, June. */
+    /** Which Hermes agents can be talked to, June first. Comes with the socket's `ok`; until then, June. */
     private val _bots = MutableStateFlow(listOf(Bot.JUNE))
     val bots: StateFlow<List<Bot>> = _bots.asStateFlow()
 
