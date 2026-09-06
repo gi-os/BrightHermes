@@ -67,6 +67,21 @@ object Listener {
     private val _modelReady = MutableStateFlow(false)
     val modelReady: StateFlow<Boolean> = _modelReady.asStateFlow()
 
+    /**
+     * What has been heard so far, decoded every [PARTIAL_EVERY_MS] while listening.
+     *
+     * Parakeet is an offline transducer, so this is a fresh decode of the whole take each time,
+     * not a streaming result — but a transducer decodes only the audio it is given, and a few
+     * seconds of it is a few hundred milliseconds on the phone, so the words appear as you say
+     * them, a beat behind. A decode already running is not queued behind; the next tick catches
+     * up. The final text comes from the full take on release, as before.
+     */
+    private val _partial = MutableStateFlow("")
+    val partial: StateFlow<String> = _partial.asStateFlow()
+    private const val PARTIAL_EVERY_MS = 1100L
+    private const val PARTIAL_MAX_SECONDS = 20
+    @Volatile private var partialBusy = false
+
     /** Set while a recording is up: whether releasing should send or discard. */
     @Volatile private var commitRequested = false
     @Volatile private var stopRequested = false
@@ -88,6 +103,7 @@ object Listener {
         commitRequested = false
         stopRequested = false
         _level.value = 0f
+        _partial.value = ""
         _state.value = State.Listening
         ensureRecognizer(context.applicationContext)
         recording = Thread({ recordLoop(onText) }, "brighthermes-voice").also { it.start() }
@@ -135,6 +151,7 @@ object Listener {
         val samples = FloatArray(maxSamples)
         var count = 0
         val chunk = FloatArray(SAMPLE_RATE / 10) // 100 ms
+        var lastPartialAt = System.currentTimeMillis()
         try {
             record.startRecording()
             while (!stopRequested && count < maxSamples) {
@@ -145,6 +162,15 @@ object Listener {
                 var sum = 0.0
                 for (i in 0 until n) sum += chunk[i] * chunk[i]
                 _level.value = min(1f, sqrt(sum / n).toFloat() * 8f)
+                val now = System.currentTimeMillis()
+                if (now - lastPartialAt >= PARTIAL_EVERY_MS && !partialBusy && recognizer != null &&
+                    count >= SAMPLE_RATE / 2 && count <= SAMPLE_RATE * PARTIAL_MAX_SECONDS
+                ) {
+                    lastPartialAt = now
+                    partialBusy = true
+                    val snapshot = samples.copyOf(count)
+                    decode.submit { partialDecode(snapshot) }
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "recording failed", e)
@@ -165,6 +191,23 @@ object Listener {
         decode.submit { transcribe(audio, onText) }
     }
 
+    private fun partialDecode(audio: FloatArray) {
+        try {
+            val rec = recognizer ?: return
+            if (_state.value !is State.Listening) return
+            val stream = rec.createStream()
+            stream.acceptWaveform(audio, SAMPLE_RATE)
+            rec.decode(stream)
+            val text = rec.getResult(stream).text.trim()
+            stream.release()
+            if (_state.value is State.Listening && text.isNotEmpty()) _partial.value = text
+        } catch (e: Exception) {
+            Log.w(TAG, "partial decode failed", e)
+        } finally {
+            partialBusy = false
+        }
+    }
+
     private fun transcribe(audio: FloatArray, onText: (String) -> Unit) {
         val rec = recognizer ?: return fail("Speech model failed to load")
         try {
@@ -173,6 +216,7 @@ object Listener {
             rec.decode(stream)
             val text = rec.getResult(stream).text.trim()
             stream.release()
+            _partial.value = text
             _state.value = State.Idle
             if (text.isNotEmpty()) onText(text)
         } catch (e: Exception) {

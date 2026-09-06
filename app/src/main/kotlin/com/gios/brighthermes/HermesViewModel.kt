@@ -359,8 +359,11 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
     /** Camera button second stage: send on release. */
     fun pttCommit() = Listener.commit()
 
-    /** Camera button released. */
+    /** Button released: transcribe and send (if committed). */
     fun pttUp() = Listener.release()
+
+    /** Wheel turned mid-hold: throw the take away. */
+    fun pttCancel() = Listener.cancel()
 
     // -- setup -----------------------------------------------------------------------------------
 

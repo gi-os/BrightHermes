@@ -33,26 +33,32 @@ val Grid = 15.dp
 
 /** Type, sized in the design's px which are dp on this panel. Akkurat is the system font on LightOS. */
 class Type(family: FontFamily) {
-    /** 9sp, tracked, upper case: tile labels, section heads, timestamps. */
-    val label = TextStyle(fontFamily = family, fontSize = 9.sp, letterSpacing = 0.9.sp, lineHeight = 12.sp)
+    // One step up from the brief's px values across the board (v0.5): the brief was drawn at
+    // desk distance and the phone is read at arm's length on a matte panel.
 
-    /** 24sp, tight: the number on a tile. */
-    val value = TextStyle(fontFamily = family, fontSize = 24.sp, letterSpacing = (-0.5).sp, lineHeight = 26.sp)
+    /** 10sp, tracked, upper case: tile labels, section heads, timestamps. */
+    val label = TextStyle(fontFamily = family, fontSize = 10.sp, letterSpacing = 1.sp, lineHeight = 13.sp)
 
-    /** 32sp: the clock, the only thing bigger than a value. */
-    val clock = TextStyle(fontFamily = family, fontSize = 32.sp, letterSpacing = (-0.7).sp, lineHeight = 34.sp)
+    /** 27sp, tight: the number on a tile. */
+    val value = TextStyle(fontFamily = family, fontSize = 27.sp, letterSpacing = (-0.5).sp, lineHeight = 29.sp)
 
-    /** 11sp: the line under a value, chips, hints. */
-    val small = TextStyle(fontFamily = family, fontSize = 11.sp, lineHeight = 14.sp)
+    /** 36sp: the clock, the only thing bigger than a value. */
+    val clock = TextStyle(fontFamily = family, fontSize = 36.sp, letterSpacing = (-0.8).sp, lineHeight = 38.sp)
 
-    /** 15sp: the conversation, the input. */
-    val body = TextStyle(fontFamily = family, fontSize = 15.sp, lineHeight = 21.sp)
+    /** 12.5sp: the line under a value, chips, hints. */
+    val small = TextStyle(fontFamily = family, fontSize = 12.5.sp, lineHeight = 16.sp)
+
+    /** 17sp: the conversation, the input. */
+    val body = TextStyle(fontFamily = family, fontSize = 17.sp, lineHeight = 24.sp)
 
     /** The user's own words: same size, medium weight. Alignment plus weight is what says "you". */
     val bodyYou = body.copy(fontWeight = FontWeight.Medium)
 
-    /** 20sp: a heading on the setup and edit screens. */
-    val title = TextStyle(fontFamily = family, fontSize = 20.sp, letterSpacing = (-0.2).sp, lineHeight = 24.sp)
+    /** 22sp: a heading on the setup and edit screens. */
+    val title = TextStyle(fontFamily = family, fontSize = 22.sp, letterSpacing = (-0.2).sp, lineHeight = 26.sp)
+
+    /** 28sp: what you are saying, while you say it. The brief's 26px live line, one step up. */
+    val live = TextStyle(fontFamily = family, fontSize = 28.sp, letterSpacing = (-0.5).sp, lineHeight = 35.sp)
 }
 
 @Composable

@@ -68,6 +68,7 @@ class MainActivity : ComponentActivity() {
             vm.pttCommit()
             vm.pttUp()
         },
+        onHoldCancel = { vm.pttCancel() },
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {

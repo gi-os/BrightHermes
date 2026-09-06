@@ -35,6 +35,8 @@ class WheelTalk(
     private val onClick: () -> Unit,
     private val onHoldStart: () -> Unit,
     private val onHoldEnd: () -> Unit,
+    /** A turn of the wheel while holding: throw the take away. The UP that follows sends nothing. */
+    private val onHoldCancel: () -> Unit = {},
     private val handler: Handler = Handler(Looper.getMainLooper()),
 ) {
     private var held = false
@@ -83,6 +85,13 @@ class WheelTalk(
                 // One notch is a complete DOWN+UP pair, so act on DOWN and swallow the UP.
                 if (!down) return true
                 Witness.turned()
+                if (held && holding) {
+                    // Turning while talking is the way out: cancel, and let the UP fall through
+                    // as nothing. Not sent to the list either — you were not scrolling.
+                    holding = false
+                    onHoldCancel()
+                    return true
+                }
                 if (held && !holding) {
                     // Press-and-turn. Not a click, not a hold.
                     spent = true

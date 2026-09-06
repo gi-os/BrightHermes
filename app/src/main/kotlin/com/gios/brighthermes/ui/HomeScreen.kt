@@ -1,6 +1,8 @@
 package com.gios.brighthermes.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -8,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -247,17 +249,24 @@ private fun PendingMark(m: Message, type: Type) {
     }
 }
 
-/** Quick replies from the server as full-width rows, each ending in a return glyph. */
+/**
+ * Quick replies from the server, in one row: underlined words, not pills, as in the brief's 1A
+ * strip. Three fit at this size; the row scrolls sideways if the server sends longer ones.
+ */
 @Composable
 private fun Chips(chips: List<String>, type: Type, onPick: (String) -> Unit) {
-    Column(Modifier.fillMaxWidth()) {
-        chips.take(3).forEach { c ->
-            Row(
-                Modifier.fillMaxWidth().clickable { onPick(c) }.padding(horizontal = Grid, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(c.replaceFirstChar { it.uppercase() }, style = type.small, color = Ink.Content, modifier = Modifier.weight(1f))
-                Text("↵", style = type.small, color = Ink.Secondary)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = Grid, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(Grid + 3.dp),
+    ) {
+        chips.take(4).forEach { c ->
+            Column(Modifier.clickable { onPick(c) }) {
+                Text(c.lowercase(), style = type.small, color = Ink.Content, maxLines = 1)
+                Spacer(Modifier.height(2.dp))
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Ink.Content))
             }
         }
     }
@@ -354,26 +363,69 @@ private fun Composer(
     }
 }
 
-/** The whole panel inverted while the button is down. Level bar underneath; no text of what was heard. */
+/**
+ * Push-to-talk, held. The brief's PTT screen — "■ LISTENING", what you are saying set large
+ * with a caret, a bar meter along the bottom, one line of instruction — on black rather than the
+ * inverted white the brief drew, so the whole app stays one surface.
+ */
 @Composable
 private fun ListeningPanel(type: Type, state: Listener.State) {
     val level by Listener.level.collectAsStateWithLifecycle()
-    Column(
-        Modifier.fillMaxSize().background(Ink.Content).padding(Grid),
-        verticalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text("JUNE", style = type.label, color = Ink.Paper)
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                if (state is Listener.State.Transcribing) "…" else "Listening",
-                style = type.value,
-                color = Ink.Paper,
-            )
-            Spacer(Modifier.height(Grid))
-            Box(Modifier.fillMaxWidth().height(3.dp).background(Ink.Secondary)) {
-                Box(Modifier.fillMaxWidth(level.coerceIn(0.02f, 1f)).fillMaxHeight().background(Ink.Paper))
-            }
+    val partial by Listener.partial.collectAsStateWithLifecycle()
+    val transcribing = state is Listener.State.Transcribing
+
+    // The meter is the last thirteen level readings, oldest left — a slow waveform, not a VU.
+    val bars = remember { mutableStateListOf<Float>().apply { repeat(BARS) { add(0f) } } }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(90)
+            bars.removeAt(0)
+            bars.add(level)
         }
-        Text("Let go to send", style = type.label, color = Ink.Paper)
+    }
+    var caret by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(500)
+            caret = !caret
+        }
+    }
+
+    Column(Modifier.fillMaxSize().background(Ink.Paper)) {
+        Column(
+            Modifier.weight(1f).fillMaxWidth().padding(Grid),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.width(9.dp).height(9.dp).background(if (transcribing) Ink.Secondary else Ink.Content))
+                Spacer(Modifier.width(9.dp))
+                Text(if (transcribing) "HEARD" else "LISTENING", style = type.label, color = Ink.Content)
+            }
+            Spacer(Modifier.height(24.dp))
+            Text(
+                buildString {
+                    append(partial.ifBlank { if (transcribing) "…" else "" })
+                    if (!transcribing && caret) append("▌")
+                },
+                style = type.live,
+                color = if (partial.isBlank()) Ink.Secondary else Ink.Content,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Column(Modifier.fillMaxWidth().padding(Grid), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.height(24.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.Bottom) {
+                bars.forEachIndexed { i, v ->
+                    val h = (4 + v * 20).dp
+                    Box(Modifier.width(3.dp).height(h).background(if (i >= BARS - 2) Ink.Secondary else Ink.Content))
+                }
+            }
+            Text(
+                if (transcribing) "Sending…" else "Let go to send · turn the wheel to cancel",
+                style = type.small,
+                color = Ink.Secondary,
+            )
+        }
     }
 }
+
+private const val BARS = 13
