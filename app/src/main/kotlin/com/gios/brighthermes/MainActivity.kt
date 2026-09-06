@@ -14,6 +14,8 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gios.brighthermes.ui.BrightHermesTheme
@@ -91,7 +93,9 @@ class MainActivity : ComponentActivity() {
                         else -> HomeScreen(vm, type)
                     }
                 }
-                ReportOverlay()
+                // The chip lives bottom-end, above the input row, so it never sits on the
+                // underline or the hint. Shake raises it; Trouble.record raises SEND ERROR?
+                ReportOverlay(corner = Alignment.BottomEnd, bottomInset = 84.dp)
             }
         }
     }

@@ -108,6 +108,15 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch { socket.frames.collect(::onFrame) }
+        // Speech failures are this app's fault by definition — the model ships inside the APK.
+        viewModelScope.launch {
+            Listener.state.collect { st ->
+                if (st is Listener.State.Error) {
+                    Trouble.record("Voice: ${st.message}")
+                    notice(st.message)
+                }
+            }
+        }
     }
 
     // -- lifecycle -------------------------------------------------------------------------------
@@ -242,7 +251,10 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
                 val merged = history + live.filter { l -> history.none { it.text == l.text && it.who == l.who } }
                 updateAll { all -> all.filter { it.bot != bot.id } + merged }
             } catch (e: IOException) {
-                // The socket will still work; the screen just starts empty.
+                // The socket will still work; the screen just starts empty. Recorded because a
+                // transcript that fails to load while the deck loads fine is this app's bug, not
+                // the network's.
+                if (_deck.value.layout.isNotEmpty()) Trouble.record("Loading the conversation failed", e)
             }
         }
     }
@@ -332,6 +344,9 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             is Frame.Error -> {
+                // Something the user asked for did not happen, and it was not the network: the
+                // gateway or the agent said so. That is the chip's case — record *and* notify.
+                Trouble.record("June couldn't answer", f.message)
                 if (f.id != null) {
                     if (away && inFlight == f.id) settleAway(f.id, "Couldn't answer: ${f.message}")
                     if (inFlight == f.id) inFlight = null
