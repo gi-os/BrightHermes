@@ -1,9 +1,9 @@
-## BrightHermes v0.5 — larger type, chips in a row, and the listening screen from the brief
+## BrightHermes v0.6 — no more doubles
 
-**One step larger everywhere.** The brief was drawn at desk distance; the phone is read at arm's length on a matte panel. Body 15 → 17, tile values 24 → 27, labels 9 → 10, the clock 32 → 36.
+**Messages showed twice; sometimes two lights blinked.** Two causes, both fixed.
 
-**Chips in one row.** The three quick replies are underlined words side by side under the transcript, as in the brief's strip, not three stacked rows with a return glyph.
+The doubles: on every open the transcript is re-fetched from the server and merged with what the phone already had, and the merge kept any local message "newer than the last stored one" — judged by the phone's clock against the server's. The two clocks disagree by enough that a message the server already had came back beside its own copy. The merge now matches on words, not on time: history is the truth, and the only live rows that survive are a reply still streaming or a message the server has not written down. Two identical consecutive rows from the server collapse to one.
 
-**The listening screen is the one we drew.** Hold the wheel and the panel becomes "■ LISTENING", what you are saying set at 28sp with a caret, a thirteen-bar meter along the bottom, and one line of instruction — on black, not the inverted white of the brief, so the app stays one surface. The words appear as you say them: Parakeet re-decodes the take about once a second while you hold, and the final text comes from the whole take on release, as before. **Turning the wheel while holding cancels** the take; letting go sends it.
+The two lights: a reply that was streaming when the socket dropped — locking the phone, switching apps, a reconnect — stayed marked pending for ever, because the turn died on the server with the old connection and its `done` never came. The next question added a second light beside it. Now a fresh connection settles every pending reply (an empty one goes, one with words stays as what arrived) and re-fetches the transcript, and a new `start` for a bot drops any stale blank pending of that bot's.
 
-**The error chip.** light-common's SEND ERROR? chip now rises when something this app did failed — June or the gateway answered with an error, the speech model would not load or a take would not transcribe, the conversation would not load while the deck did. Bottom right, above the input; shake still files a report from anywhere.
+Gateway: replies are asked for at `reasoning_effort: low` (June's default is medium), and every turn's time-to-first-word and total are in `docker logs brighthermes`.

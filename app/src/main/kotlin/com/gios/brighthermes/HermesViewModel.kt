@@ -245,11 +245,15 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
     private fun loadThread(bot: Bot = _bot.value) {
         viewModelScope.launch {
             try {
-                val history = api.thread(bot.id, 60)
-                // Keep anything in flight at the bottom; history replaces the rest of this bot's slice.
-                val live = _all.value.filter { it.bot == bot.id && (it.pending || it.at > (history.lastOrNull()?.at ?: 0L)) }
-                val merged = history + live.filter { l -> history.none { it.text == l.text && it.who == l.who } }
-                updateAll { all -> all.filter { it.bot != bot.id } + merged }
+                val history = dedupe(api.thread(bot.id, 60))
+                // History is the truth for this bot; what stays from the live list is only what the
+                // server does not have yet — a reply still streaming, or a message the server has
+                // not written down. Matched on words, not on clocks: the phone's and the server's
+                // clocks disagree by enough that "newer than the last stored message" kept a copy
+                // of a message the server already had, and that is where the doubles came from.
+                val known = history.map { it.who to norm(it.text) }.toHashSet()
+                val live = _all.value.filter { it.bot == bot.id && (it.pending || (it.who to norm(it.text)) !in known) }
+                updateAll { all -> all.filter { it.bot != bot.id } + history + live }
             } catch (e: IOException) {
                 // The socket will still work; the screen just starts empty. Recorded because a
                 // transcript that fails to load while the deck loads fine is this app's bug, not
@@ -272,6 +276,20 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
         if (list.size < 2) return
         val i = list.indexOfFirst { it.id == _bot.value.id }
         pickBot(list[(i + 1) % list.size])
+    }
+
+    /** Whitespace-insensitive text identity, for telling a stored message from its live twin. */
+    private fun norm(t: String) = t.trim().replace(Regex("\\s+"), " ")
+
+    /** Two identical consecutive rows from the server are one message written twice. */
+    private fun dedupe(list: List<Message>): List<Message> {
+        val out = ArrayList<Message>(list.size)
+        for (m in list) {
+            val last = out.lastOrNull()
+            if (last != null && last.who == m.who && norm(last.text) == norm(m.text)) continue
+            out += m
+        }
+        return out
     }
 
     fun send(text: String) {
@@ -306,6 +324,15 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
     private fun onFrame(f: Frame) {
         when (f) {
             is Frame.Ok -> {
+                // A fresh connection. Whatever was streaming on the old one died with it on the
+                // server side, so a reply still marked pending here will never finish: settle it.
+                // An empty one goes; one with words stays as what arrived. That stale pending
+                // blink beside a new one is the "two lights" of v0.5. The transcript is
+                // re-fetched afterwards, so whatever the server did finish comes back whole.
+                inFlight = null
+                val hadPending = _all.value.any { it.pending }
+                updateAll { list -> list.mapNotNull { m -> if (!m.pending) m else if (m.text.isBlank()) null else m.copy(pending = false, tool = null, thinking = false) } }
+                if (hadPending) loadThread()
                 if (f.chips.isNotEmpty()) _chips.value = f.chips
                 if (f.bots.isNotEmpty()) {
                     _bots.value = f.bots
@@ -317,7 +344,13 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
             is Frame.Start -> {
                 inFlight = f.reply
                 val to = pendingBot.remove(f.id) ?: f.bot
-                updateAll { it + Message(f.reply, Message.Who.JUNE, "", System.currentTimeMillis(), pending = true, bot = to) }
+                // One reply at a time per bot. The gateway cancels the previous turn when a new
+                // message arrives, but its `done` can land after this `start`; drop the old
+                // blank pending here rather than showing two lights until it does.
+                updateAll { list ->
+                    list.filterNot { it.bot == to && it.pending && it.text.isBlank() && it.id != f.reply } +
+                        Message(f.reply, Message.Who.JUNE, "", System.currentTimeMillis(), pending = true, bot = to)
+                }
             }
             is Frame.Delta -> updateAll { list ->
                 list.map { if (it.id == f.id) it.copy(text = it.text + f.text, thinking = false, tool = null) else it }
