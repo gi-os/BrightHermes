@@ -60,7 +60,7 @@ object Markdown {
                     }
                     if (i < lines.size) i++ // closing fence
                     val body = buf.toString().trimEnd()
-                    val words = info.split(Regex("\s+")).filter { it.isNotBlank() }
+                    val words = info.split(Regex("\\s+")).filter { it.isNotBlank() }
                     if (words.firstOrNull().equals("html", ignoreCase = true)) {
                         val h = words.getOrNull(1)?.toIntOrNull()?.coerceIn(2, 24) ?: 8
                         out.add(Block.Html(body, h))
