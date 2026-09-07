@@ -70,6 +70,15 @@ curl -X POST -H "Authorization: Bearer $T" https://hermes.basilnet.com/tiles/dig
 `notifyChange` on every fetch. Lock face = deck at rest; app = deck + conversation. One deck,
 two canvases, zero drift.
 
+## What a reply can hold
+
+Markdown (LightChat's parser, drawn to the deck's rules), images — `![alt](url)`, https or
+`data:` or `/images/<id>` from the gateway's `POST /images` — and **cards**: a fenced block with
+info string `html` (`html 6` = six grid units tall) renders live in a WebView with the deck
+defaults and `brighthermes.fetch()`. The gateway tells June all of this on every turn, with its
+own address and token, so she can use it. Under your latest message, **READ** appears the moment
+the gateway has it and June has started.
+
 ## Bots beside June
 
 June is the default. The gateway can list other **Hermes agents** as bots (`BOTS` in its `.env`:

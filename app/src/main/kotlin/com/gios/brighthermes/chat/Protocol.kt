@@ -101,6 +101,8 @@ data class Message(
     val unprompted: Boolean = false,
     /** Which bot this belongs to. The transcript shows one bot at a time. */
     val bot: String = Bot.JUNE.id,
+    /** For a user message: the other end has picked it up and started on it. Drawn as READ. */
+    val seen: Boolean = false,
 ) {
     enum class Who { USER, JUNE }
 }

@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gios.brighthermes.HermesViewModel
+import com.gios.brighthermes.chat.Markdown
 import com.gios.brighthermes.chat.Message
 import com.gios.brighthermes.hw.WheelTalk
 import com.gios.brighthermes.voice.Listener
@@ -103,7 +104,8 @@ fun HomeScreen(vm: HermesViewModel, type: Type) {
             )
         }
 
-        Transcript(messages, type, Modifier.weight(1f))
+        val host = remember(vm.prefs.server, vm.prefs.token) { WidgetHost(vm.prefs.server, vm.prefs.token, vm.device) }
+        Transcript(messages, type, host, Modifier.weight(1f))
 
         if (chips.isNotEmpty() && messages.none { it.pending }) {
             Chips(chips, type) { vm.send(it) }
@@ -138,7 +140,7 @@ private fun LockCardRow(card: com.gios.brighthermes.deck.LockCard, type: Type) {
 }
 
 @Composable
-private fun Transcript(messages: List<Message>, type: Type, modifier: Modifier) {
+private fun Transcript(messages: List<Message>, type: Type, host: WidgetHost, modifier: Modifier) {
     val state = rememberLazyListState()
     WheelScroll(state, reverse = true)
     // Newest at the bottom, and the list keeps its bottom pinned while June types.
@@ -163,6 +165,7 @@ private fun Transcript(messages: List<Message>, type: Type, modifier: Modifier) 
             }
         }
         val reversed = messages.asReversed()
+        val lastYours = messages.lastOrNull { it.who == Message.Who.USER }?.id
         items(reversed, key = { it.id }) { m ->
             val idx = reversed.indexOf(m)
             val older = reversed.getOrNull(idx + 1)
@@ -172,7 +175,7 @@ private fun Transcript(messages: List<Message>, type: Type, modifier: Modifier) 
                     Timestamp(m.at, type)
                     Spacer(Modifier.height(Grid))
                 }
-                MessageRow(m, type)
+                MessageRow(m, type, host, lastFromYou = m.id == lastYours)
             }
         }
     }
@@ -197,22 +200,33 @@ private fun Timestamp(at: Long, type: Type) {
 }
 
 @Composable
-private fun MessageRow(m: Message, type: Type) {
+private fun MessageRow(m: Message, type: Type, host: WidgetHost, lastFromYou: Boolean) {
     when (m.who) {
-        Message.Who.USER -> Text(
-            m.text,
-            style = type.bodyYou,
-            color = Ink.Content,
-            textAlign = TextAlign.End,
-            modifier = Modifier.fillMaxWidth().padding(start = Grid * 3),
-        )
+        Message.Who.USER -> Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
+            Text(
+                m.text,
+                style = type.bodyYou,
+                color = Ink.Content,
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth().padding(start = Grid * 3),
+            )
+            // The read receipt, under your latest message only: the gateway has it and June has
+            // started. It stays until you say something else, the way a read receipt does.
+            if (m.seen && lastFromYou) {
+                Spacer(Modifier.height(3.dp))
+                Text("READ", style = type.label, color = Ink.Secondary)
+            }
+        }
         Message.Who.JUNE -> Column(Modifier.fillMaxWidth()) {
             if (m.unprompted) {
                 Text("JUNE", style = type.label, color = Ink.Secondary)
                 Spacer(Modifier.height(3.dp))
             }
             if (m.text.isNotEmpty()) {
-                Text(m.text, style = type.body, color = Ink.Content, modifier = Modifier.fillMaxWidth())
+                // Parsed on every change while streaming; the texts are short and the parser is a
+                // few string scans, so this is cheaper than trying to be clever about it.
+                val blocks = remember(m.text) { Markdown.parse(m.text) }
+                MarkdownView(blocks, type, host, Modifier.fillMaxWidth())
             }
             if (m.pending) {
                 Spacer(Modifier.height(if (m.text.isEmpty()) 0.dp else 3.dp))

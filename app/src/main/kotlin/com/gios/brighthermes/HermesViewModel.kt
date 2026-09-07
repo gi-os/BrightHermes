@@ -348,7 +348,9 @@ class HermesViewModel(app: Application) : AndroidViewModel(app) {
                 // message arrives, but its `done` can land after this `start`; drop the old
                 // blank pending here rather than showing two lights until it does.
                 updateAll { list ->
-                    list.filterNot { it.bot == to && it.pending && it.text.isBlank() && it.id != f.reply } +
+                    list.filterNot { it.bot == to && it.pending && it.text.isBlank() && it.id != f.reply }
+                        // The gateway has the message and June is on it: the read receipt.
+                        .map { if (it.id == f.id && it.who == Message.Who.USER) it.copy(seen = true) else it } +
                         Message(f.reply, Message.Who.JUNE, "", System.currentTimeMillis(), pending = true, bot = to)
                 }
             }

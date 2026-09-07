@@ -12,6 +12,40 @@ import org.junit.Test
 class ProtocolTest {
 
     @Test
+    fun `markdown parses what June writes, and an html fence is a card`() {
+        val blocks = com.gios.brighthermes.chat.Markdown.parse(
+            """
+            Got it. **Two** things.
+
+            ```html 6
+            <b>garage</b>
+            ```
+
+            ```python
+            print(1)
+            ```
+
+            ![the garage](/images/abc.png)
+
+            - one
+            - two
+            """.trimIndent(),
+        )
+        val html = blocks.filterIsInstance<com.gios.brighthermes.chat.Block.Html>().single()
+        assertEquals("<b>garage</b>", html.html)
+        assertEquals(6, html.height)
+        val code = blocks.filterIsInstance<com.gios.brighthermes.chat.Block.Code>().single()
+        assertEquals("python", code.lang)
+        assertEquals("/images/abc.png", blocks.filterIsInstance<com.gios.brighthermes.chat.Block.Image>().single().url)
+        assertEquals(2, blocks.filterIsInstance<com.gios.brighthermes.chat.Block.ListBlock>().single().items.size)
+        // A bare fence with no info string is code, not a card, and defaults are sane.
+        val bare = com.gios.brighthermes.chat.Markdown.parse("```\nx\n```")
+        assertTrue(bare.single() is com.gios.brighthermes.chat.Block.Code)
+        assertEquals(8, com.gios.brighthermes.chat.Markdown.parse("```html\n<i>y</i>\n```").filterIsInstance<com.gios.brighthermes.chat.Block.Html>().single().height)
+    }
+
+
+    @Test
     fun `parses every server frame`() {
         assertEquals(
             Frame.Ok("s1", listOf("lights off"), listOf(Bot.JUNE, Bot("z13", "Qwen")), 5.0),
