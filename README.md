@@ -2,6 +2,8 @@
 
 # BrightHermes
 
+[**⬇ Download the latest APK**](https://github.com/gi-os/BrightHermes/releases/latest) · free, open source.
+
 A glanceable agent for the **Light Phone III**. Info Deck on top, June below, and a quiet pipe
 feeding her everything the other Bright apps know. The Light Phone philosophy applied to an
 agent: tool, not toy; glance, don't glow.
