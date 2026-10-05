@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -104,6 +105,7 @@ private fun Field(
     onDone: () -> Unit = {},
     transform: VisualTransformation = VisualTransformation.None,
 ) {
+    val focusManager = LocalFocusManager.current
     Column(Modifier.fillMaxWidth(0.8f)) {
         Text(label, style = type.label, color = Ink.Secondary)
         Spacer(Modifier.height(6.dp))
@@ -115,7 +117,7 @@ private fun Field(
             singleLine = true,
             visualTransformation = transform,
             keyboardOptions = KeyboardOptions(imeAction = imeAction, keyboardType = keyboard, autoCorrectEnabled = false),
-            keyboardActions = KeyboardActions(onDone = { onDone() }, onNext = null),
+            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); onDone() }, onNext = null),
             modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
         )
         Box(Modifier.fillMaxWidth().height(3.dp).background(Ink.Content))
