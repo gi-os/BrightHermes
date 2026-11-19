@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import kotlin.math.min
 import kotlin.math.sqrt
 
@@ -66,13 +67,7 @@ object Listener {
     private val _modelReady = MutableStateFlow(false)
     val modelReady: StateFlow<Boolean> = _modelReady.asStateFlow()
 
-    /**
-     * What has been heard so far, decoded every [PARTIAL_EVERY_MS] while listening.
-     *
-     * Parakeet is an offline transducer: previews decode only the latest 20 seconds,
-     * not the growing whole take. A running preview is never queued behind; the next
-     * tick catches up. Final text always comes from the complete take.
-     */
+    /** Stable committed words plus a best-effort preview of the current overlapping window. */
     private val _partial = MutableStateFlow("")
     val partial: StateFlow<String> = _partial.asStateFlow()
     private const val PARTIAL_EVERY_MS = 1100L
@@ -83,6 +78,8 @@ object Listener {
     private val decode = Executors.newSingleThreadExecutor()
     @Volatile private var recognizer: OfflineRecognizer? = null
     private var recording: Thread? = null
+    private var captureActive = false
+    private var decodeTask: Future<*>? = null
 
     fun hasPermission(context: Context): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
@@ -91,40 +88,44 @@ object Listener {
     fun warm(context: Context) = ensureRecognizer(context.applicationContext)
 
     /** Begin listening. Caller has checked [hasPermission]. [onText] runs on the decode thread. */
-    fun start(context: Context, onText: (String) -> Unit) {
-        if (_state.value is State.Listening || _state.value is State.Transcribing) return
+    @Synchronized fun start(context: Context, onText: (String) -> Unit) {
+        if (take != null) return
         val current = DictationTake(SAMPLE_RATE)
         take = current
         _level.value = 0f
         _partial.value = ""
         _state.value = State.Listening
+        captureActive = true
         ensureRecognizer(context.applicationContext)
         recording = Thread({ recordLoop(current, onText) }, "brighthermes-voice").also { it.start() }
     }
 
     /** Full press: whatever has been said so far is to be sent when the button is released. */
-    fun commit() {
+    @Synchronized fun commit() {
         if (_state.value is State.Listening) take?.commit()
     }
 
     /** Button released. Sends if [commit] was called during the hold, otherwise discards. */
-    fun release() {
+    @Synchronized fun release() {
         if (_state.value is State.Listening) take?.release()
     }
 
     /** Stop and discard, whatever the button state — the activity going away, for instance. */
-    fun cancel() {
-        when (_state.value) {
-            is State.Listening -> take?.cancel()
-            is State.Error -> _state.value = State.Idle
-            else -> Unit
+    @Synchronized fun cancel() {
+        take?.cancel()
+        decodeTask?.cancel(false) // Clear queued obsolete snapshots without interrupting JNI.
+        decodeTask = null
+        if (!captureActive) {
+            take = null
+            _partial.value = ""
+            _state.value = State.Idle
         }
     }
 
     @SuppressLint("MissingPermission") // checked by the caller via hasPermission()
     private fun recordLoop(current: DictationTake, onText: (String) -> Unit) {
         val minBuf = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_FLOAT)
-        if (minBuf <= 0) return fail("Mic unavailable")
+        if (minBuf <= 0) return recordingFailed(current, "Mic unavailable", captureEnded = true)
         val record = try {
             AudioRecord(
                 MediaRecorder.AudioSource.VOICE_RECOGNITION, SAMPLE_RATE,
@@ -133,87 +134,141 @@ object Listener {
             )
         } catch (e: Exception) {
             Log.e(TAG, "AudioRecord init failed", e)
-            return fail("Mic unavailable")
+            return recordingFailed(current, "Mic unavailable", captureEnded = true)
         }
         if (record.state != AudioRecord.STATE_INITIALIZED) {
             record.release()
-            return fail("Mic unavailable")
+            return recordingFailed(current, "Mic unavailable", captureEnded = true)
         }
 
         val chunk = FloatArray(SAMPLE_RATE / 10) // 100 ms
-        var lastPartialAt = System.currentTimeMillis()
+        var lastPartialAt = 0
         try {
             record.startRecording()
             while (current.isRecording) {
-                val n = record.read(chunk, 0, min(chunk.size, current.remaining), AudioRecord.READ_BLOCKING)
-                if (n <= 0) { current.release(); break }
+                val available = current.remaining
+                check(available > 0) { "Transcription cannot keep up" }
+                val n = record.read(chunk, 0, min(chunk.size, available), AudioRecord.READ_BLOCKING)
+                check(n > 0) { "Microphone read failed: $n" }
                 current.append(chunk, n)
                 var sum = 0.0
                 for (i in 0 until n) sum += chunk[i] * chunk[i]
-                _level.value = min(1f, sqrt(sum / n).toFloat() * 8f)
-                val now = System.currentTimeMillis()
-                if (now - lastPartialAt >= PARTIAL_EVERY_MS && recognizer != null) {
-                    val snapshot = current.partial()
-                    if (snapshot != null) {
-                        lastPartialAt = now
-                        decode.submit { partialDecode(current, snapshot) }
+                synchronized(this) {
+                    if (take === current && !current.isFinished) {
+                        _level.value = min(1f, sqrt(sum / n).toFloat() * 8f)
                     }
+                }
+                lastPartialAt += n
+                val preview = lastPartialAt >= SAMPLE_RATE * PARTIAL_EVERY_MS / 1000
+                val window = current.next(preview)
+                if (window != null) {
+                    lastPartialAt = 0
+                    schedule(current, window, onText)
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "recording failed", e)
+            recordingFailed(current, e.message ?: "Recording failed")
+        } finally {
+            runCatching { record.stop() }
             record.release()
-            return fail("Recording failed")
         }
-        runCatching { record.stop() }
-        record.release()
-        _level.value = 0f
-
-        val audio = current.finish()
-        take = null // Do not retain the large recording buffer while idle or decoding.
-        if (audio == null) {
-            // Let go without pressing, or under 250 ms of audio: nothing to send.
-            _state.value = State.Idle
-            return
+        synchronized(this) {
+            if (take !== current) return
+            captureActive = false
+            current.endCapture()
+            _level.value = 0f
+            if (current.isFinished) {
+                take = null
+                if (_state.value !is State.Error) {
+                    _partial.value = ""
+                    _state.value = State.Idle
+                }
+                return
+            }
+            _state.value = State.Transcribing
+            current.next()?.let { window -> schedule(current, window, onText) }
+            if (current.isFinished) {
+                take = null
+                _partial.value = ""
+                _state.value = State.Idle
+            }
         }
-        _state.value = State.Transcribing
-        decode.submit { transcribe(audio, onText) }
     }
 
-    private fun partialDecode(current: DictationTake, audio: FloatArray) {
+    @Synchronized private fun schedule(
+        current: DictationTake, window: DictationTake.Window, onText: (String) -> Unit,
+    ) {
+        if (take === current && !current.isFinished) {
+            decodeTask = decode.submit { decodeWindow(current, window, onText) }
+        }
+    }
+
+    /** Required work drains before another preview is admitted. Never share the recognizer concurrently. */
+    private fun decodeWindow(current: DictationTake, window: DictationTake.Window, onText: (String) -> Unit) {
+        synchronized(this) {
+            if (take !== current || current.isFinished) return
+        }
         try {
-            val rec = recognizer ?: return
-            if (_state.value !is State.Listening || take !== current) return
+            val rec = recognizer ?: error("Speech model failed to load")
             val stream = rec.createStream()
-            stream.acceptWaveform(audio, SAMPLE_RATE)
-            rec.decode(stream)
-            val text = rec.getResult(stream).text.trim()
-            stream.release()
-            if (_state.value is State.Listening && take === current && text.isNotEmpty()) {
-                _partial.value = text
+            val result = try {
+                stream.acceptWaveform(window.audio, SAMPLE_RATE)
+                rec.decode(stream)
+                rec.getResult(stream)
+            } finally {
+                stream.release()
+            }
+            synchronized(this) {
+                if (take !== current) return
+                val publication = current.complete(window, result.tokens, result.timestamps)
+                if (publication != null) {
+                    _partial.value = publication.text
+                    if (window.final) {
+                        if (!captureActive) take = null
+                        _state.value = State.Idle
+                        if (publication.send) onText(publication.text)
+                    }
+                }
             }
         } catch (e: Exception) {
+            if (window.required) {
+                Log.e(TAG, "required transcription failed", e)
+                synchronized(this) {
+                    if (take === current && !current.isFinished) {
+                        current.cancel()
+                        if (!captureActive) take = null
+                        fail("Transcription failed")
+                    }
+                }
+                return
+            }
             Log.w(TAG, "partial decode failed", e)
-        } finally {
-            current.partialComplete()
+            current.previewFailed()
+        }
+        synchronized(this) {
+            if (take !== current) return
+            current.next()?.let { next -> schedule(current, next, onText) }
+            if (current.isFinished && !captureActive && take === current) {
+                take = null
+                if (_state.value !is State.Error) _state.value = State.Idle
+            }
         }
     }
 
-    private fun transcribe(audio: FloatArray, onText: (String) -> Unit) {
-        val rec = recognizer ?: return fail("Speech model failed to load")
-        try {
-            val stream = rec.createStream()
-            stream.acceptWaveform(audio, SAMPLE_RATE)
-            rec.decode(stream)
-            val text = rec.getResult(stream).text.trim()
-            stream.release()
-            _partial.value = text
-            _state.value = State.Idle
-            if (text.isNotEmpty()) onText(text)
-        } catch (e: Exception) {
-            Log.e(TAG, "transcription failed", e)
-            fail("Transcription failed")
+    @Synchronized private fun recordingFailed(current: DictationTake, message: String, captureEnded: Boolean = false) {
+        if (take !== current) return
+        val alreadyFinished = current.isFinished
+        current.cancel()
+        if (captureEnded) {
+            captureActive = false
+            take = null
         }
+        if (alreadyFinished) {
+            if (captureEnded && _state.value !is State.Error) _state.value = State.Idle
+            return
+        }
+        fail(message)
     }
 
     private fun ensureRecognizer(appContext: Context) {
@@ -248,7 +303,9 @@ object Listener {
         }
     }
 
-    private fun fail(message: String) {
+    @Synchronized private fun fail(message: String) {
+        take?.cancel()
+        if (!captureActive) take = null
         _level.value = 0f
         _state.value = State.Error(message)
     }
