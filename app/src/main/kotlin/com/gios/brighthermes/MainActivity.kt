@@ -75,7 +75,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        LightReport.install(context = this, appName = "BrightHermes", label = "hermes", token = BuildConfig.REPORT_TOKEN)
+        LightReport.install(context = this, appName = "BrightHermes", label = "hermes", token = "") // reports queue until light-common 1.11.0 sends them via the relay
 
         setContent {
             BrightHermesTheme { type ->
