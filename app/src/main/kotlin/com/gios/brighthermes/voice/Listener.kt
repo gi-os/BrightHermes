@@ -46,7 +46,6 @@ import kotlin.math.sqrt
  */
 object Listener {
     const val SAMPLE_RATE = 16000
-    const val MAX_RECORD_SECONDS = 28
     private const val ASSET_DIR = "parakeet-110m-en"
     private const val TAG = "BrightHermes.voice"
 
@@ -70,21 +69,15 @@ object Listener {
     /**
      * What has been heard so far, decoded every [PARTIAL_EVERY_MS] while listening.
      *
-     * Parakeet is an offline transducer, so this is a fresh decode of the whole take each time,
-     * not a streaming result — but a transducer decodes only the audio it is given, and a few
-     * seconds of it is a few hundred milliseconds on the phone, so the words appear as you say
-     * them, a beat behind. A decode already running is not queued behind; the next tick catches
-     * up. The final text comes from the full take on release, as before.
+     * Parakeet is an offline transducer: previews decode only the latest 20 seconds,
+     * not the growing whole take. A running preview is never queued behind; the next
+     * tick catches up. Final text always comes from the complete take.
      */
     private val _partial = MutableStateFlow("")
     val partial: StateFlow<String> = _partial.asStateFlow()
     private const val PARTIAL_EVERY_MS = 1100L
-    private const val PARTIAL_MAX_SECONDS = 20
-    @Volatile private var partialBusy = false
 
-    /** Set while a recording is up: whether releasing should send or discard. */
-    @Volatile private var commitRequested = false
-    @Volatile private var stopRequested = false
+    @Volatile private var take: DictationTake? = null
 
     // One executor for model load + decode, so they serialise naturally.
     private val decode = Executors.newSingleThreadExecutor()
@@ -100,36 +93,36 @@ object Listener {
     /** Begin listening. Caller has checked [hasPermission]. [onText] runs on the decode thread. */
     fun start(context: Context, onText: (String) -> Unit) {
         if (_state.value is State.Listening || _state.value is State.Transcribing) return
-        commitRequested = false
-        stopRequested = false
+        val current = DictationTake(SAMPLE_RATE)
+        take = current
         _level.value = 0f
         _partial.value = ""
         _state.value = State.Listening
         ensureRecognizer(context.applicationContext)
-        recording = Thread({ recordLoop(onText) }, "brighthermes-voice").also { it.start() }
+        recording = Thread({ recordLoop(current, onText) }, "brighthermes-voice").also { it.start() }
     }
 
     /** Full press: whatever has been said so far is to be sent when the button is released. */
     fun commit() {
-        if (_state.value is State.Listening) commitRequested = true
+        if (_state.value is State.Listening) take?.commit()
     }
 
     /** Button released. Sends if [commit] was called during the hold, otherwise discards. */
     fun release() {
-        if (_state.value is State.Listening) stopRequested = true
+        if (_state.value is State.Listening) take?.release()
     }
 
     /** Stop and discard, whatever the button state — the activity going away, for instance. */
     fun cancel() {
         when (_state.value) {
-            is State.Listening -> { commitRequested = false; stopRequested = true }
+            is State.Listening -> take?.cancel()
             is State.Error -> _state.value = State.Idle
             else -> Unit
         }
     }
 
     @SuppressLint("MissingPermission") // checked by the caller via hasPermission()
-    private fun recordLoop(onText: (String) -> Unit) {
+    private fun recordLoop(current: DictationTake, onText: (String) -> Unit) {
         val minBuf = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_FLOAT)
         if (minBuf <= 0) return fail("Mic unavailable")
         val record = try {
@@ -147,29 +140,24 @@ object Listener {
             return fail("Mic unavailable")
         }
 
-        val maxSamples = SAMPLE_RATE * MAX_RECORD_SECONDS
-        val samples = FloatArray(maxSamples)
-        var count = 0
         val chunk = FloatArray(SAMPLE_RATE / 10) // 100 ms
         var lastPartialAt = System.currentTimeMillis()
         try {
             record.startRecording()
-            while (!stopRequested && count < maxSamples) {
-                val n = record.read(chunk, 0, min(chunk.size, maxSamples - count), AudioRecord.READ_BLOCKING)
-                if (n <= 0) break
-                System.arraycopy(chunk, 0, samples, count, n)
-                count += n
+            while (current.isRecording) {
+                val n = record.read(chunk, 0, min(chunk.size, current.remaining), AudioRecord.READ_BLOCKING)
+                if (n <= 0) { current.release(); break }
+                current.append(chunk, n)
                 var sum = 0.0
                 for (i in 0 until n) sum += chunk[i] * chunk[i]
                 _level.value = min(1f, sqrt(sum / n).toFloat() * 8f)
                 val now = System.currentTimeMillis()
-                if (now - lastPartialAt >= PARTIAL_EVERY_MS && !partialBusy && recognizer != null &&
-                    count >= SAMPLE_RATE / 2 && count <= SAMPLE_RATE * PARTIAL_MAX_SECONDS
-                ) {
-                    lastPartialAt = now
-                    partialBusy = true
-                    val snapshot = samples.copyOf(count)
-                    decode.submit { partialDecode(snapshot) }
+                if (now - lastPartialAt >= PARTIAL_EVERY_MS && recognizer != null) {
+                    val snapshot = current.partial()
+                    if (snapshot != null) {
+                        lastPartialAt = now
+                        decode.submit { partialDecode(current, snapshot) }
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -181,30 +169,33 @@ object Listener {
         record.release()
         _level.value = 0f
 
-        if (!commitRequested || count < SAMPLE_RATE / 4) {
+        val audio = current.finish()
+        take = null // Do not retain the large recording buffer while idle or decoding.
+        if (audio == null) {
             // Let go without pressing, or under 250 ms of audio: nothing to send.
             _state.value = State.Idle
             return
         }
         _state.value = State.Transcribing
-        val audio = samples.copyOf(count)
         decode.submit { transcribe(audio, onText) }
     }
 
-    private fun partialDecode(audio: FloatArray) {
+    private fun partialDecode(current: DictationTake, audio: FloatArray) {
         try {
             val rec = recognizer ?: return
-            if (_state.value !is State.Listening) return
+            if (_state.value !is State.Listening || take !== current) return
             val stream = rec.createStream()
             stream.acceptWaveform(audio, SAMPLE_RATE)
             rec.decode(stream)
             val text = rec.getResult(stream).text.trim()
             stream.release()
-            if (_state.value is State.Listening && text.isNotEmpty()) _partial.value = text
+            if (_state.value is State.Listening && take === current && text.isNotEmpty()) {
+                _partial.value = text
+            }
         } catch (e: Exception) {
             Log.w(TAG, "partial decode failed", e)
         } finally {
-            partialBusy = false
+            current.partialComplete()
         }
     }
 

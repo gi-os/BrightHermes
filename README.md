@@ -141,6 +141,14 @@ decodes only the audio it was given, so a short command is text in a few hundred
 once the model is warm (it is warmed on open). Gradle fetches the model at build time; nothing
 is downloaded on the phone and no audio leaves it.
 
+Dictation keeps listening past 28 seconds until release. A five-minute safety ceiling
+automatically transcribes and sends the captured take, even if the button is still held;
+canceling or leaving the app before finalization discards it as usual. The audio buffer is
+bounded to 19.2 MB (16 kHz mono floats), excluding the final decode copy and model workspace.
+Live text previews show only the most recent 20 seconds, with one preview decode at a time;
+the final transcription uses the complete take. Long-take decode latency and memory usage
+still need validation on Light Phone III hardware.
+
 The keys arrive as ordinary key events — LightOS dispatches the wheel and camera scancodes to
 the focused window, and `light-common`'s `LightKeys` names them — so there is no service and
 no special permission behind this, only `RECORD_AUDIO`.
