@@ -141,6 +141,26 @@ decodes only the audio it was given, so a short command is text in a few hundred
 once the model is warm (it is warmed on open). Gradle fetches the model at build time; nothing
 is downloaded on the phone and no audio leaves it.
 
+Dictation keeps listening past 28 seconds until release. Offline decoding uses 28-second
+windows with 4 seconds of overlapping context, on one decoder thread. Whole-word token
+timestamps and a matching overlap anchor join the text; spelling alone never removes repeated
+words. Missing or ambiguous anchors, failed required decodes, and a decoder that exhausts the
+bounded capture backlog fail visibly without sending a transcript with an audio gap.
+
+Release waits for required windows and the final short tail, then sends once. Live text combines
+committed words with a best-effort tail preview. The five-minute sample-count safety ceiling
+also drains and sends, even while held; canceling or leaving the app discards pending work.
+PCM storage does not grow with the take: up to 56 seconds of capture backlog and two transient
+28-second snapshots (about 7.2 MB of floats); an obsolete native decode may temporarily retain
+another 28-second snapshot (1.8 MB). Native features/model workspace are additional and only
+one decode runs at a time. Completed transcript text is retained, not the complete recording.
+
+Unit tests exercise sample ordering, overlap stitching, and lifecycle decisions with supplied
+decoder tokens, not Parakeet accuracy. A local x86 native probe uses the shipped model and
+upstream speech audio; natural long dictation accuracy, microphone behavior, memory, and
+latency still need validation on Light Phone III hardware. Overlap reconciliation deliberately
+prefers a visible failure to guessing when recognition differs at a seam.
+
 The keys arrive as ordinary key events — LightOS dispatches the wheel and camera scancodes to
 the focused window, and `light-common`'s `LightKeys` names them — so there is no service and
 no special permission behind this, only `RECORD_AUDIO`.
