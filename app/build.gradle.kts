@@ -143,7 +143,7 @@ android {
 
 dependencies {
     // Shake-to-report, the wheel, the greys, Akkurat, the camera-button keycodes.
-    implementation("com.gios:light-common:1.8.0")
+    implementation("com.gios:light-common:1.11.0")
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
 
     val composeBom = platform("androidx.compose:compose-bom:2025.12.01")
